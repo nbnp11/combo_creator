@@ -3,6 +3,9 @@ import type { BallData, Keyframe, ObjectData, PlayerData, ProjectSettings } from
 
 export const SCHEMA_VERSION = 1;
 
+/** Патч для объекта: объединение частичных видов по типам (без kind — дискриминант не меняем). */
+export type ObjectPatch = Partial<Omit<PlayerData, "kind">> | Partial<Omit<BallData, "kind">>;
+
 const DEFAULT_SETTINGS: ProjectSettings = { fps: 24, size: 1080, durationSec: 10 };
 
 function uid(prefix: string): string {
@@ -53,7 +56,7 @@ interface ProjectState {
   isPlaying: boolean;
   addObject: (obj: ObjectData) => void;
   removeObject: (id: string) => void;
-  updateObject: (id: string, patch: Partial<ObjectData>) => void;
+  updateObject: (id: string, patch: ObjectPatch) => void;
   setKeyframe: (id: string, kf: Keyframe) => void;
   moveKeyframe: (id: string, oldTime: number, newTime: number) => void;
   removeKeyframe: (id: string, time: number) => void;
@@ -64,11 +67,9 @@ interface ProjectState {
   loadProject: (p: { settings: ProjectSettings; objects: ObjectData[] }) => void;
 }
 
-function patchObject<T extends ObjectData>(obj: T, patch: Partial<ObjectData>): T {
-  // Сохраняем дискриминант kind — нельзя перезаписать kind патчем.
-  const { kind: _ignored, ...rest } = patch as Partial<ObjectData> & { kind?: never };
-  void _ignored;
-  return { ...obj, ...rest } as T;
+function patchObject<T extends ObjectData>(obj: T, patch: ObjectPatch): T {
+  // kind не входит в ObjectPatch, поэтому просто объединяем; T сохраняет дискриминант.
+  return { ...obj, ...(patch as Partial<T>) } as T;
 }
 
 export const useProjectStore = create<ProjectState>((set) => ({
