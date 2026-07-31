@@ -1,147 +1,14 @@
-import type { ReactNode } from "react";
 import { useProjectStore } from "../store/projectStore";
 import { interpolate } from "../timeline/interpolator";
 import type { PlayerData } from "../types";
+import { Field, FieldRow, NumberInput, Palette, Select, SideHead, TextInput } from "../ui";
 
 const TEAM_COLORS: Record<PlayerData["team"], string> = {
-  blue: "#1565c0",
-  red: "#c62828",
+  blue: "#1e88e5",
+  red: "#e53935",
 };
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "4px 6px",
-  background: "#1b1b1b",
-  color: "#eee",
-  border: "1px solid #555",
-  borderRadius: 3,
-  fontSize: 13,
-  boxSizing: "border-box",
-};
-
-const labelStyle: React.CSSProperties = {
-  fontSize: 12,
-  color: "#aaa",
-  marginBottom: 2,
-  display: "block",
-};
-
-/** Мини-обёртка поля с подписью. */
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div style={{ marginBottom: 10 }}>
-      <span style={labelStyle}>{label}</span>
-      {children}
-    </div>
-  );
-}
-
-function NumberField({
-  label,
-  value,
-  onChange,
-  min,
-  step,
-}: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-  min?: number;
-  step?: number;
-}) {
-  return (
-    <Field label={label}>
-      <input
-        type="number"
-        min={min}
-        step={step}
-        value={Number.isFinite(value) ? value : 0}
-        onChange={(e) => onChange(Number(e.target.value) || 0)}
-        style={inputStyle}
-      />
-    </Field>
-  );
-}
-
-function TextField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <Field label={label}>
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        style={inputStyle}
-      />
-    </Field>
-  );
-}
-
-function ColorField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <Field label={label}>
-      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-        <span
-          style={{
-            width: 22,
-            height: 22,
-            borderRadius: 3,
-            background: value,
-            border: "1px solid #555",
-            flexShrink: 0,
-          }}
-        />
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          style={inputStyle}
-        />
-      </div>
-    </Field>
-  );
-}
-
-function SelectField<T extends string>({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: T;
-  options: readonly T[];
-  onChange: (v: T) => void;
-}) {
-  return (
-    <Field label={label}>
-      <select value={value} onChange={(e) => onChange(e.target.value as T)} style={inputStyle}>
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </select>
-    </Field>
-  );
-}
-
-/** Полная панель свойств: общие поля + поля по типу объекта; при пустом выделении — настройки сцены. */
+/** Полная панель свойств: общие поля + поля по типу объекта; при пустом/множественном выделении — настройки сцены. */
 export default function PropertiesPanel() {
   const selectedIds = useProjectStore((s) => s.selectedIds);
   const objects = useProjectStore((s) => s.objects);
@@ -150,55 +17,77 @@ export default function PropertiesPanel() {
   const setKeyframe = useProjectStore((s) => s.setKeyframe);
   const settings = useProjectStore((s) => s.settings);
   const updateSettings = useProjectStore((s) => s.updateSettings);
-  const interpolation = settings.interpolation ?? "linear";
 
   // Свойства объекта показываем только при ровно одном выделенном; иначе — настройки сцены.
   const obj = selectedIds.length === 1 ? objects.find((o) => o.id === selectedIds[0]) : undefined;
 
   if (!obj) {
     return (
-      <div style={{ padding: 12 }}>
-        <h3 style={{ marginTop: 0, fontSize: 14, color: "#ccc" }}>Сцена</h3>
-        <SelectField
-          label="FPS"
-          value={String(settings.fps) as "15" | "24" | "30"}
-          options={["15", "24", "30"]}
-          onChange={(v) => updateSettings({ fps: Number(v) as 15 | 24 | 30 })}
-        />
-        <SelectField
-          label="Размер GIF (по ширине)"
-          value={String(settings.size) as "720" | "1080" | "1440"}
-          options={["720", "1080", "1440"]}
-          onChange={(v) => updateSettings({ size: Number(v) as 720 | 1080 | 1440 })}
-        />
-        <NumberField
-          label="Длительность (сек)"
-          value={settings.durationSec}
-          min={1}
-          step={1}
-          onChange={(v) => updateSettings({ durationSec: Math.max(1, v) })}
-        />
-        <SelectField
-          label="Интерполяция"
-          value={interpolation}
-          options={["linear", "ease", "catmullrom"] as const}
-          onChange={(v) => updateSettings({ interpolation: v })}
-        />
-        {selectedIds.length > 1 ? (
-          <p style={{ fontSize: 12, color: "#ffb74d" }}>
-            Выбрано объектов: {selectedIds.length}. Свойства доступны при одном выделении. Групповые
-            действия — удаление/дублирование — в тулбаре.
-          </p>
-        ) : (
-          <p style={{ fontSize: 12, color: "#777" }}>
-            Выделите объект на канвасе или в таймлайне, чтобы редактировать его свойства.
-          </p>
-        )}
-      </div>
+      <>
+        <SideHead>Сцена</SideHead>
+        <div style={{ padding: 14 }}>
+          <Field label="FPS">
+            <Select
+              value={String(settings.fps)}
+              onChange={(e) => updateSettings({ fps: Number(e.target.value) as 15 | 24 | 30 })}
+            >
+              <option value="15">15</option>
+              <option value="24">24</option>
+              <option value="30">30</option>
+            </Select>
+          </Field>
+          <Field label="Размер GIF (по ширине)">
+            <Select
+              value={String(settings.size)}
+              onChange={(e) =>
+                updateSettings({ size: Number(e.target.value) as 720 | 1080 | 1440 })
+              }
+            >
+              <option value="720">720</option>
+              <option value="1080">1080</option>
+              <option value="1440">1440</option>
+            </Select>
+          </Field>
+          <Field label="Длительность (сек)">
+            <NumberInput
+              value={settings.durationSec}
+              min={1}
+              step={1}
+              onChange={(e) =>
+                updateSettings({ durationSec: Math.max(1, Number(e.target.value) || 0) })
+              }
+            />
+          </Field>
+          <Field label="Интерполяция">
+            <Select
+              value={settings.interpolation ?? "linear"}
+              onChange={(e) =>
+                updateSettings({
+                  interpolation: e.target.value as "linear" | "ease" | "catmullrom",
+                })
+              }
+            >
+              <option value="linear">linear</option>
+              <option value="ease">ease</option>
+              <option value="catmullrom">catmullrom</option>
+            </Select>
+          </Field>
+          {selectedIds.length > 1 ? (
+            <p style={{ fontSize: 12, color: "#ffb74d", margin: "8px 0 0" }}>
+              Выбрано объектов: {selectedIds.length}. Свойства доступны при одном выделении.
+            </p>
+          ) : (
+            <p style={{ fontSize: 12, color: "var(--text-faint)", margin: "8px 0 0" }}>
+              Выделите объект на канвасе или в таймлайне.
+            </p>
+          )}
+        </div>
+      </>
     );
   }
 
   const up = (patch: Parameters<typeof updateObject>[1]) => updateObject(obj.id, patch);
+  const interpolation = settings.interpolation ?? "linear";
   const pos = interpolate(obj.track, currentTime, interpolation);
 
   // rotation правит rotation ключа в текущий момент времени (модель та же, что у drag→key).
@@ -206,156 +95,211 @@ export default function PropertiesPanel() {
     setKeyframe(obj.id, { time: currentTime, x: pos.x, y: pos.y, rotation: deg });
 
   return (
-    <div style={{ padding: 12 }}>
-      <h3 style={{ marginTop: 0, fontSize: 14, color: "#ccc", textTransform: "capitalize" }}>
-        {obj.kind}
-      </h3>
+    <>
+      <SideHead>Свойства · {obj.kind}</SideHead>
+      <div style={{ padding: 14 }}>
+        {/* Общие */}
+        <Field label="Видимость">
+          <input
+            type="checkbox"
+            checked={obj.visible}
+            onChange={(e) => up({ visible: e.target.checked })}
+          />
+        </Field>
+        <FieldRow>
+          <Field label="Z-index">
+            <NumberInput
+              value={obj.zIndex}
+              onChange={(e) => up({ zIndex: Number(e.target.value) || 0 })}
+            />
+          </Field>
+          <Field label="Поворот ° (в кадре)">
+            <NumberInput
+              value={Math.round(pos.rotation)}
+              onChange={(e) => setRotation(Number(e.target.value) || 0)}
+            />
+          </Field>
+        </FieldRow>
 
-      {/* Общие поля */}
-      <Field label="Видимость">
-        <input
-          type="checkbox"
-          checked={obj.visible}
-          onChange={(e) => up({ visible: e.target.checked })}
-        />
-      </Field>
-      <NumberField label="Z-index" value={obj.zIndex} onChange={(v) => up({ zIndex: v })} />
-      <NumberField
-        label="Поворот (°) в текущем кадре"
-        value={Math.round(pos.rotation)}
-        onChange={setRotation}
-      />
+        <div style={{ borderTop: "1px solid var(--border-soft)", margin: "6px 0 12px" }} />
 
-      <hr style={{ border: "none", borderTop: "1px solid #3a3a3a", margin: "8px 0" }} />
+        {obj.kind === "player" && (
+          <>
+            <FieldRow>
+              <Field label="Команда">
+                <Select
+                  value={obj.team}
+                  onChange={(e) => {
+                    const team = e.target.value as PlayerData["team"];
+                    up({ team, color: TEAM_COLORS[team] });
+                  }}
+                >
+                  <option value="blue">Синяя</option>
+                  <option value="red">Красная</option>
+                </Select>
+              </Field>
+              <Field label="Номер">
+                <NumberInput
+                  value={obj.number}
+                  min={0}
+                  onChange={(e) => up({ number: Number(e.target.value) || 0 })}
+                />
+              </Field>
+            </FieldRow>
+            <Field label="Цвет">
+              <Palette value={obj.color} onChange={(v) => up({ color: v })} />
+            </Field>
+            <Field label="Радиус">
+              <NumberInput
+                value={obj.radius}
+                min={1}
+                onChange={(e) => up({ radius: Number(e.target.value) || 0 })}
+              />
+            </Field>
+          </>
+        )}
 
-      {/* Поля по типу */}
-      {obj.kind === "player" && (
-        <>
-          <NumberField
-            label="Номер"
-            value={obj.number}
-            min={0}
-            onChange={(v) => up({ number: v })}
-          />
-          <SelectField
-            label="Команда"
-            value={obj.team}
-            options={["blue", "red"] as const}
-            onChange={(team) => up({ team, color: TEAM_COLORS[team] })}
-          />
-          <ColorField label="Цвет" value={obj.color} onChange={(v) => up({ color: v })} />
-          <NumberField
-            label="Радиус"
-            value={obj.radius}
-            min={1}
-            onChange={(v) => up({ radius: v })}
-          />
-        </>
-      )}
+        {obj.kind === "ball" && (
+          <>
+            <Field label="Цвет">
+              <Palette value={obj.color} onChange={(v) => up({ color: v })} />
+            </Field>
+            <Field label="Радиус">
+              <NumberInput
+                value={obj.radius}
+                min={1}
+                onChange={(e) => up({ radius: Number(e.target.value) || 0 })}
+              />
+            </Field>
+          </>
+        )}
 
-      {obj.kind === "ball" && (
-        <>
-          <ColorField label="Цвет" value={obj.color} onChange={(v) => up({ color: v })} />
-          <NumberField
-            label="Радиус"
-            value={obj.radius}
-            min={1}
-            onChange={(v) => up({ radius: v })}
-          />
-        </>
-      )}
+        {obj.kind === "arrow" && (
+          <>
+            <Field label="Цвет линии">
+              <Palette value={obj.stroke} onChange={(v) => up({ stroke: v })} />
+            </Field>
+            <Field label="Толщина">
+              <NumberInput
+                value={obj.strokeWidth}
+                min={1}
+                onChange={(e) => up({ strokeWidth: Number(e.target.value) || 0 })}
+              />
+            </Field>
+            <FieldRow>
+              <Field label="Конец X (отн.)">
+                <NumberInput
+                  value={obj.points[0]}
+                  onChange={(e) => up({ points: [Number(e.target.value) || 0, obj.points[1]] })}
+                />
+              </Field>
+              <Field label="Конец Y (отн.)">
+                <NumberInput
+                  value={obj.points[1]}
+                  onChange={(e) => up({ points: [obj.points[0], Number(e.target.value) || 0] })}
+                />
+              </Field>
+            </FieldRow>
+          </>
+        )}
 
-      {obj.kind === "arrow" && (
-        <>
-          <ColorField label="Цвет линии" value={obj.stroke} onChange={(v) => up({ stroke: v })} />
-          <NumberField
-            label="Толщина"
-            value={obj.strokeWidth}
-            min={1}
-            onChange={(v) => up({ strokeWidth: v })}
-          />
-          <NumberField
-            label="Конец X (отн.)"
-            value={obj.points[0]}
-            onChange={(v) => up({ points: [v, obj.points[1]] })}
-          />
-          <NumberField
-            label="Конец Y (отн.)"
-            value={obj.points[1]}
-            onChange={(v) => up({ points: [obj.points[0], v] })}
-          />
-        </>
-      )}
+        {obj.kind === "circle" && (
+          <>
+            <Field label="Радиус">
+              <NumberInput
+                value={obj.radius}
+                min={1}
+                onChange={(e) => up({ radius: Number(e.target.value) || 0 })}
+              />
+            </Field>
+            <Field label="Обводка">
+              <Palette value={obj.stroke} onChange={(v) => up({ stroke: v })} />
+            </Field>
+            <Field label="Заливка">
+              <Palette value={obj.fill} onChange={(v) => up({ fill: v })} />
+            </Field>
+          </>
+        )}
 
-      {obj.kind === "circle" && (
-        <>
-          <NumberField
-            label="Радиус"
-            value={obj.radius}
-            min={1}
-            onChange={(v) => up({ radius: v })}
-          />
-          <ColorField label="Обводка" value={obj.stroke} onChange={(v) => up({ stroke: v })} />
-          <ColorField label="Заливка" value={obj.fill} onChange={(v) => up({ fill: v })} />
-        </>
-      )}
+        {obj.kind === "text" && (
+          <>
+            <Field label="Текст">
+              <TextInput value={obj.text} onChange={(e) => up({ text: e.target.value })} />
+            </Field>
+            <Field label="Размер шрифта">
+              <NumberInput
+                value={obj.fontSize}
+                min={6}
+                onChange={(e) => up({ fontSize: Number(e.target.value) || 0 })}
+              />
+            </Field>
+            <Field label="Цвет">
+              <Palette value={obj.fill} onChange={(v) => up({ fill: v })} />
+            </Field>
+          </>
+        )}
 
-      {obj.kind === "text" && (
-        <>
-          <TextField label="Текст" value={obj.text} onChange={(v) => up({ text: v })} />
-          <NumberField
-            label="Размер шрифта"
-            value={obj.fontSize}
-            min={6}
-            onChange={(v) => up({ fontSize: v })}
-          />
-          <ColorField label="Цвет" value={obj.fill} onChange={(v) => up({ fill: v })} />
-        </>
-      )}
+        {obj.kind === "rectangle" && (
+          <>
+            <FieldRow>
+              <Field label="Ширина">
+                <NumberInput
+                  value={obj.width}
+                  min={1}
+                  onChange={(e) => up({ width: Number(e.target.value) || 0 })}
+                />
+              </Field>
+              <Field label="Высота">
+                <NumberInput
+                  value={obj.height}
+                  min={1}
+                  onChange={(e) => up({ height: Number(e.target.value) || 0 })}
+                />
+              </Field>
+            </FieldRow>
+            <Field label="Обводка">
+              <Palette value={obj.stroke} onChange={(v) => up({ stroke: v })} />
+            </Field>
+            <Field label="Заливка">
+              <Palette value={obj.fill} onChange={(v) => up({ fill: v })} />
+            </Field>
+          </>
+        )}
 
-      {obj.kind === "rectangle" && (
-        <>
-          <NumberField
-            label="Ширина"
-            value={obj.width}
-            min={1}
-            onChange={(v) => up({ width: v })}
-          />
-          <NumberField
-            label="Высота"
-            value={obj.height}
-            min={1}
-            onChange={(v) => up({ height: v })}
-          />
-          <ColorField label="Обводка" value={obj.stroke} onChange={(v) => up({ stroke: v })} />
-          <ColorField label="Заливка" value={obj.fill} onChange={(v) => up({ fill: v })} />
-        </>
-      )}
-
-      {obj.kind === "highlight" && (
-        <>
-          <NumberField
-            label="Ширина"
-            value={obj.width}
-            min={1}
-            onChange={(v) => up({ width: v })}
-          />
-          <NumberField
-            label="Высота"
-            value={obj.height}
-            min={1}
-            onChange={(v) => up({ height: v })}
-          />
-          <ColorField label="Цвет" value={obj.color} onChange={(v) => up({ color: v })} />
-          <NumberField
-            label="Прозрачность (0–1)"
-            value={obj.opacity}
-            min={0}
-            step={0.05}
-            onChange={(v) => up({ opacity: Math.max(0, Math.min(1, v)) })}
-          />
-        </>
-      )}
-    </div>
+        {obj.kind === "highlight" && (
+          <>
+            <FieldRow>
+              <Field label="Ширина">
+                <NumberInput
+                  value={obj.width}
+                  min={1}
+                  onChange={(e) => up({ width: Number(e.target.value) || 0 })}
+                />
+              </Field>
+              <Field label="Высота">
+                <NumberInput
+                  value={obj.height}
+                  min={1}
+                  onChange={(e) => up({ height: Number(e.target.value) || 0 })}
+                />
+              </Field>
+            </FieldRow>
+            <Field label="Цвет">
+              <Palette value={obj.color} onChange={(v) => up({ color: v })} />
+            </Field>
+            <Field label="Прозрачность (0–1)">
+              <NumberInput
+                value={obj.opacity}
+                min={0}
+                step={0.05}
+                onChange={(e) =>
+                  up({ opacity: Math.max(0, Math.min(1, Number(e.target.value) || 0)) })
+                }
+              />
+            </Field>
+          </>
+        )}
+      </div>
+    </>
   );
 }

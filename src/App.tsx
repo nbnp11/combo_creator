@@ -8,39 +8,30 @@ import Timeline from "./timeline/Timeline";
 export default function App() {
   useHotkeys();
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100vh",
-        background: "#1b1b1b",
-        color: "#eee",
-      }}
-    >
-      <div style={{ padding: 12, borderBottom: "1px solid #333" }}>
-        <Toolbar />
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
+      <Toolbar />
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         <aside
           style={{
-            width: 240,
-            borderRight: "1px solid #333",
-            overflow: "auto",
-            background: "#222",
+            width: 224,
+            borderRight: "1px solid var(--border)",
+            background: "var(--panel)",
+            overflowY: "auto",
             flexShrink: 0,
           }}
         >
           <LayersPanel />
         </aside>
-        <div style={{ flex: 1, overflow: "auto", padding: 16 }}>
+        <main className="pb-stage">
           <Canvas />
-        </div>
+        </main>
         <aside
           style={{
-            width: 280,
-            borderLeft: "1px solid #333",
-            overflow: "auto",
-            background: "#222",
+            width: 268,
+            borderLeft: "1px solid var(--border)",
+            background: "var(--panel)",
+            overflowY: "auto",
+            flexShrink: 0,
           }}
         >
           <PropertiesPanel />

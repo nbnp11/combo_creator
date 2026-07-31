@@ -1,0 +1,333 @@
+/* ===== Дизайн-токены PlaybookBuilder ===== */
+:root {
+  --bg: #0f1115;
+  --panel: #16191f;
+  --panel-2: #1b1f27;
+  --panel-3: #222732;
+  --border: #262b34;
+  --border-soft: #1f242c;
+  --text: #e8eaee;
+  --text-dim: #8b929e;
+  --text-faint: #5b626d;
+  --accent: #2fd17a;
+  --accent-deep: #10b573;
+  --accent-ink: #062417;
+  --danger: #ef4f4f;
+
+  --ui: "Manrope", system-ui, sans-serif;
+  --mono: "Azeret Mono", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+body {
+  font-family: var(--ui);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* ===== Topbar / brand ===== */
+.pb-topbar {
+  display: flex;
+  align-items: center;
+  height: 50px;
+  padding: 0 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+.pb-brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 100%;
+  padding-right: 14px;
+  margin-right: 6px;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+.pb-brand b {
+  color: var(--accent);
+}
+.pb-brand .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--accent);
+  transform: rotate(45deg);
+}
+
+/* ===== Button ===== */
+.pb-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 6px;
+  border: 0;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-dim);
+  font: 500 13px var(--ui);
+  white-space: nowrap;
+  transition:
+    background 0.13s,
+    color 0.13s;
+}
+.pb-btn:hover {
+  background: var(--panel-3);
+  color: var(--text);
+}
+.pb-btn--danger:hover {
+  background: rgba(239, 79, 79, 0.13);
+  color: var(--danger);
+}
+.pb-btn--active {
+  background: rgba(47, 209, 122, 0.15);
+  color: var(--accent);
+}
+.pb-btn--active:hover {
+  background: rgba(47, 209, 122, 0.22);
+  color: var(--accent);
+}
+.pb-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.pb-btn:disabled:hover {
+  background: transparent;
+  color: var(--text-dim);
+}
+
+.pb-cta {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-radius: 7px;
+  border: 0;
+  cursor: pointer;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: 700 13px var(--ui);
+  transition: filter 0.13s;
+}
+.pb-cta:hover {
+  filter: brightness(1.07);
+}
+.pb-cta:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* group */
+.pb-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 6px;
+  height: 100%;
+  border-left: 1px solid var(--border-soft);
+}
+.pb-glabel {
+  font: 600 9px var(--ui);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding-right: 8px;
+  white-space: nowrap;
+}
+
+/* ===== Form ===== */
+.pb-field {
+  margin-bottom: 12px;
+}
+.pb-field > .pb-flabel {
+  display: block;
+  font: 600 9.5px var(--ui);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 6px;
+}
+.pb-ctrl {
+  width: 100%;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 7px 9px;
+  font: 500 13px var(--ui);
+  outline: none;
+}
+.pb-ctrl:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(47, 209, 122, 0.13);
+}
+select.pb-ctrl {
+  appearance: none;
+  cursor: pointer;
+}
+.pb-row {
+  display: flex;
+  gap: 8px;
+}
+
+/* ===== Palette ===== */
+.pb-palette {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pb-sw {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s;
+}
+.pb-sw:hover {
+  transform: scale(1.12);
+}
+.pb-sw[data-on="true"] {
+  box-shadow:
+    0 0 0 2px var(--panel),
+    0 0 0 4px var(--accent);
+}
+
+/* ===== Dropdown ===== */
+.pb-dd {
+  position: relative;
+}
+.pb-dd-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 150px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 4px;
+  z-index: 50;
+  box-shadow: 0 12px 30px -10px #000;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.pb-dd-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  font: 500 13px var(--ui);
+  border-radius: 5px;
+  cursor: pointer;
+}
+.pb-dd-item:hover {
+  background: var(--panel-3);
+  color: var(--text);
+}
+.pb-dd-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+/* ===== Side panels ===== */
+.pb-side-head {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  font: 700 10px var(--ui);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.pb-layer {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 13px;
+  border-bottom: 1px solid var(--border-soft);
+  cursor: pointer;
+  font-size: 13px;
+}
+.pb-layer:hover {
+  background: var(--panel-2);
+}
+.pb-layer[data-sel="true"] {
+  background: rgba(47, 209, 122, 0.1);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.pb-layer-nm {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pb-layer-name {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pb-layer-name:hover {
+  color: var(--text);
+}
+.pb-layer[data-off="true"] .pb-layer-nm {
+  opacity: 0.45;
+}
+.pb-act {
+  padding: 2px 6px;
+  border: 0;
+  background: transparent;
+  color: var(--text-faint);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.pb-act:hover {
+  background: var(--panel-3);
+  color: var(--text);
+}
+.pb-act--del:hover {
+  color: var(--danger);
+}
+
+/* ===== Stage / canvas area ===== */
+.pb-stage {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  background: radial-gradient(130% 120% at 50% 0%, #13161c, #0d0f13);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}

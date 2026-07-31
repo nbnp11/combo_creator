@@ -49,7 +49,7 @@ export function createPlayer(
     zIndex: 1,
     number: n,
     team,
-    color: team === "blue" ? "#1565c0" : "#c62828",
+    color: team === "blue" ? "#1e88e5" : "#e53935",
     radius: 18,
     track: [{ time: 0, x, y, rotation: 0 }],
   };
@@ -87,8 +87,8 @@ export function createCircle(x: number, y: number): CircleData {
     visible: true,
     zIndex: 1,
     radius: 40,
-    stroke: "#ffeb3b",
-    fill: "rgba(255,235,59,0.15)",
+    stroke: "#ffffff",
+    fill: "#fdd835",
     track: [{ time: 0, x, y, rotation: 0 }],
   };
 }
@@ -115,7 +115,7 @@ export function createRectangle(x: number, y: number): RectangleData {
     width: 120,
     height: 80,
     stroke: "#ffffff",
-    fill: "rgba(255,255,255,0.1)",
+    fill: "#1a1a1a",
     track: [{ time: 0, x, y, rotation: 0 }],
   };
 }
@@ -128,7 +128,7 @@ export function createHighlight(x: number, y: number): HighlightData {
     zIndex: 0,
     width: 160,
     height: 120,
-    color: "#ffeb3b",
+    color: "#fdd835",
     opacity: 0.25,
     track: [{ time: 0, x, y, rotation: 0 }],
   };

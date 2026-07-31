@@ -1,22 +1,11 @@
 import { useProjectStore } from "../store/projectStore";
-import { KIND_ICON, objectLabel } from "./objectMeta";
-
-const iconBtn: React.CSSProperties = {
-  padding: "0 4px",
-  background: "transparent",
-  border: "1px solid #555",
-  color: "#ccc",
-  borderRadius: 3,
-  cursor: "pointer",
-  fontSize: 11,
-  lineHeight: "16px",
-  flexShrink: 0,
-};
+import { ActionButton, SideHead } from "../ui";
+import { objectLabel } from "./objectMeta";
 
 /**
  * Панель слоёв: список объектов слева от канваса.
  * Синхронизация выделения с канвасом/таймлайном через общий selectedIds.
- * Управление: видимость, z-order (вверх/вниз), удаление, выбор (Shift — мультиселект).
+ * Строка: имя (выбор, Shift — мультиселект), ↑/↓ (z-order), × (удалить), чекбокс видимости.
  * Слои отсортированы по убыванию zIndex: верхний в списке = рисуется поверх.
  */
 export default function LayersPanel() {
@@ -30,117 +19,44 @@ export default function LayersPanel() {
   const sorted = [...objects].sort((a, b) => b.zIndex - a.zIndex);
 
   return (
-    <div style={{ height: "100%", overflow: "auto" }}>
-      <h3
-        style={{
-          margin: 0,
-          padding: "10px 12px",
-          fontSize: 13,
-          color: "#aaa",
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-          borderBottom: "1px solid #333",
-        }}
-      >
-        Слои
-      </h3>
+    <>
+      <SideHead>Слои</SideHead>
       {sorted.length === 0 && (
-        <p style={{ padding: 12, fontSize: 12, color: "#777" }}>Нет объектов.</p>
+        <p style={{ padding: 12, fontSize: 12, color: "var(--text-faint)", margin: 0 }}>
+          Нет объектов.
+        </p>
       )}
       {sorted.map((obj) => {
         const selected = selectedIds.includes(obj.id);
         return (
-          <div
-            key={obj.id}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "4px 8px",
-              background: selected ? "rgba(255,235,59,0.12)" : "transparent",
-              borderBottom: "1px solid #333",
-              opacity: obj.visible ? 1 : 0.5,
-            }}
-          >
+          <div key={obj.id} className="pb-layer" data-sel={selected} data-off={!obj.visible}>
             <button
               type="button"
+              className="pb-layer-name"
               onClick={(e) => select(obj.id, e.shiftKey)}
               title="Выделить (Shift — добавить к выделению)"
-              style={{
-                flex: 1,
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                minWidth: 0,
-                background: "transparent",
-                border: "none",
-                color: "#eee",
-                cursor: "pointer",
-                fontSize: 13,
-                textAlign: "left",
-                fontWeight: selected ? 600 : 400,
-              }}
+              style={{ fontWeight: selected ? 600 : 400 }}
             >
-              <span style={{ width: 16, textAlign: "center", color: "#ffb74d", flexShrink: 0 }}>
-                {KIND_ICON[obj.kind]}
-              </span>
-              <span
-                style={{
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {objectLabel(obj)}
-              </span>
+              {objectLabel(obj)}
             </button>
-            <button
-              type="button"
-              title={obj.visible ? "Скрыть" : "Показать"}
-              onClick={(e) => {
-                e.stopPropagation();
-                updateObject(obj.id, { visible: !obj.visible });
-              }}
-              style={iconBtn}
-            >
-              {obj.visible ? "👁" : "🚫"}
-            </button>
-            <button
-              type="button"
-              title="Поднять слой (поверх)"
-              onClick={(e) => {
-                e.stopPropagation();
-                reorderObject(obj.id, "up");
-              }}
-              style={iconBtn}
-            >
+            <ActionButton title="Поднять слой (поверх)" onClick={() => reorderObject(obj.id, "up")}>
               ↑
-            </button>
-            <button
-              type="button"
-              title="Опустить слой"
-              onClick={(e) => {
-                e.stopPropagation();
-                reorderObject(obj.id, "down");
-              }}
-              style={iconBtn}
-            >
+            </ActionButton>
+            <ActionButton title="Опустить слой" onClick={() => reorderObject(obj.id, "down")}>
               ↓
-            </button>
-            <button
-              type="button"
-              title="Удалить объект"
-              onClick={(e) => {
-                e.stopPropagation();
-                removeObject(obj.id);
-              }}
-              style={{ ...iconBtn, borderColor: "#c62828", color: "#ef9a9a" }}
-            >
+            </ActionButton>
+            <ActionButton variant="del" title="Удалить объект" onClick={() => removeObject(obj.id)}>
               ×
-            </button>
+            </ActionButton>
+            <input
+              type="checkbox"
+              checked={obj.visible}
+              onChange={(e) => updateObject(obj.id, { visible: e.target.checked })}
+              title={obj.visible ? "Скрыть" : "Показать"}
+            />
           </div>
         );
       })}
-    </div>
+    </>
   );
 }

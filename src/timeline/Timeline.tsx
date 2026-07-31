@@ -7,19 +7,19 @@ import { usePlayback } from "./usePlayback";
 
 const LABEL_WIDTH = 120; // px, левая колонка с именем объекта
 const ROW_HEIGHT = 32; // px
-const RULER_HEIGHT = 24; // px
+const RULER_HEIGHT = 26; // px
 
 export default function Timeline() {
   const objects = useProjectStore((s) => s.objects);
   const selectedIds = useProjectStore((s) => s.selectedIds);
   const currentTime = useProjectStore((s) => s.currentTime);
   const duration = useProjectStore((s) => s.settings.durationSec);
-  const interpolation = useProjectStore((s) => s.settings.interpolation ?? "linear");
   const setCurrentTime = useProjectStore((s) => s.setCurrentTime);
   const select = useProjectStore((s) => s.select);
   const setKeyframe = useProjectStore((s) => s.setKeyframe);
   const moveKeyframe = useProjectStore((s) => s.moveKeyframe);
   const removeKeyframe = useProjectStore((s) => s.removeKeyframe);
+  const interpolation = useProjectStore((s) => s.settings.interpolation ?? "linear");
   const { isPlaying, toggle } = usePlayback();
 
   const trackRef = useRef<HTMLDivElement>(null);
@@ -56,7 +56,6 @@ export default function Timeline() {
     };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
-    setCurrentTime(tFromClientX(e.clientX));
   };
 
   // --- Marker drag (меняет time ключевого кадра) ---
@@ -98,10 +97,10 @@ export default function Timeline() {
       ref={trackRef}
       style={{
         width: "100%",
-        background: "#222",
-        color: "#eee",
+        background: "var(--panel)",
+        color: "var(--text)",
         userSelect: "none",
-        borderTop: "1px solid #444",
+        borderTop: "1px solid var(--border)",
       }}
     >
       {/* Линейка */}
@@ -109,31 +108,35 @@ export default function Timeline() {
         <div
           style={{
             width: LABEL_WIDTH,
-            borderRight: "1px solid #444",
-            padding: "4px 8px",
+            borderRight: "1px solid var(--border)",
+            padding: "0 10px",
             fontSize: 12,
-            color: "#aaa",
+            color: "var(--text-dim)",
             display: "flex",
             alignItems: "center",
-            gap: 6,
+            gap: 8,
           }}
         >
           <button
             type="button"
             onClick={toggle}
             style={{
-              padding: "2px 8px",
+              padding: "4px 12px",
               fontSize: 12,
               cursor: "pointer",
-              background: isPlaying ? "#ff5252" : "#2e7d32",
-              color: "#fff",
+              background: "var(--accent)",
+              color: "var(--accent-ink)",
               border: "none",
-              borderRadius: 3,
+              borderRadius: 5,
+              fontWeight: 700,
             }}
           >
             {isPlaying ? "❚❚ Пауза" : "► Play"}
           </button>
-          <span>{currentTime.toFixed(1)}s</span>
+          <span style={{ fontFamily: "var(--mono)", fontVariantNumeric: "tabular-nums" }}>
+            {currentTime.toFixed(1)}
+            <span style={{ color: "var(--text-faint)" }}>s</span>
+          </span>
         </div>
         {/* biome-ignore lint/a11y/noStaticElementInteractions: интерактивная область перетаскивания плейхеда */}
         <div style={{ position: "relative", flex: 1 }} onMouseDown={startPlayheadDrag}>
@@ -145,10 +148,13 @@ export default function Timeline() {
                 left: secToX(s),
                 top: 0,
                 bottom: 0,
-                borderLeft: "1px solid #555",
-                fontSize: 11,
-                color: "#bbb",
-                paddingLeft: 3,
+                borderLeft: "1px solid var(--border-soft)",
+                fontSize: 10,
+                fontFamily: "var(--mono)",
+                color: "var(--text-faint)",
+                paddingLeft: 4,
+                display: "flex",
+                alignItems: "center",
               }}
             >
               {s}
@@ -167,7 +173,7 @@ export default function Timeline() {
             top: 0,
             bottom: 0,
             width: 2,
-            background: "#ff5252",
+            background: "var(--accent)",
             pointerEvents: "none",
             zIndex: 5,
           }}
@@ -179,7 +185,7 @@ export default function Timeline() {
               left: -5,
               width: 12,
               height: 12,
-              background: "#ff5252",
+              background: "var(--accent)",
               borderRadius: "50%",
             }}
           />
@@ -193,8 +199,8 @@ export default function Timeline() {
               style={{
                 display: "flex",
                 height: ROW_HEIGHT,
-                borderBottom: "1px solid #333",
-                background: selected ? "rgba(255,235,59,0.08)" : "transparent",
+                borderBottom: "1px solid var(--border-soft)",
+                background: selected ? "rgba(47,209,122,0.08)" : "transparent",
               }}
             >
               <button
@@ -202,16 +208,15 @@ export default function Timeline() {
                 onClick={(e) => select(obj.id, e.shiftKey)}
                 style={{
                   width: LABEL_WIDTH,
-                  borderRight: "1px solid #444",
-                  padding: "0 8px",
+                  borderRight: "1px solid var(--border)",
+                  padding: "0 10px",
                   display: "flex",
                   alignItems: "center",
                   fontSize: 12,
                   fontWeight: selected ? 600 : 400,
                   background: "transparent",
                   border: "none",
-                  borderBottom: "none",
-                  color: "#eee",
+                  color: selected ? "var(--text)" : "var(--text-dim)",
                   textAlign: "left",
                   cursor: "pointer",
                 }}
@@ -266,8 +271,8 @@ function Marker({
         marginTop: -7,
         width: 14,
         height: 14,
-        background: selected ? "#ffeb3b" : "#90caf9",
-        border: "1px solid #333",
+        background: selected ? "var(--accent)" : "var(--text-faint)",
+        border: "1px solid var(--bg)",
         borderRadius: 3,
         cursor: "ew-resize",
       }}
@@ -291,7 +296,7 @@ function Marker({
           lineHeight: "14px",
           padding: 0,
           border: "none",
-          background: "#c62828",
+          background: "var(--danger)",
           color: "#fff",
           borderRadius: "50%",
           cursor: "pointer",

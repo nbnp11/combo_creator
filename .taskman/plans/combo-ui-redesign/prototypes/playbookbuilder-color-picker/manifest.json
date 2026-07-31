@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "plan": "combo-ui-redesign",
+  "slug": "playbookbuilder-color-picker",
+  "title": "PlaybookBuilder — цвет через color picker",
+  "created_at": "2026-07-31T18:12:56.406Z",
+  "updated_at": "2026-07-31T18:12:56.406Z",
+  "latest_version": 1,
+  "versions": [
+    {
+      "version": 1,
+      "file": "v001.html",
+      "intent": "Поле «Цвет» теперь нативный color picker (плашка-свитч + читаемый хекс), а не текстовый ввод хекса",
+      "created_at": "2026-07-31T18:12:56.406Z"
+    }
+  ]
+}

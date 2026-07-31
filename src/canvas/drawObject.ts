@@ -1,7 +1,18 @@
 import Konva from "konva";
 import type { ObjectData } from "../types";
 
-const SEL_STROKE = "#ffeb3b";
+const SEL_STROKE = "#2fd17a"; // акцент выделения (изумруд)
+
+/** Подходящий цвет текста (номер игрока) по яркости фона. */
+function readableText(bg: string): string {
+  const h = bg.replace("#", "");
+  if (h.length < 6) return "#ffffff";
+  const r = Number.parseInt(h.slice(0, 2), 16);
+  const g = Number.parseInt(h.slice(2, 4), 16);
+  const b = Number.parseInt(h.slice(4, 6), 16);
+  const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+  return lum > 150 ? "#1a1a1a" : "#ffffff";
+}
 
 /**
  * Императивная отрисовка фигур одного объекта в Konva.Group.
@@ -28,7 +39,7 @@ export function drawObjectInto(group: Konva.Group, obj: ObjectData, selected: bo
           text: String(obj.number),
           fontSize: radius,
           fontStyle: "bold",
-          fill: "#ffffff",
+          fill: readableText(obj.color),
           align: "center",
           verticalAlign: "middle",
           width: radius * 2,

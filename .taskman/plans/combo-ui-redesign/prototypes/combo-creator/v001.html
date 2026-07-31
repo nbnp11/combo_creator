@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Combo Creator — редизайн</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Oxanium:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0d0f13; --panel:#15181e; --panel-2:#1b1f27; --panel-3:#21262f;
+    --border:#2a303a; --border-soft:#21262e;
+    --text:#e9ebef; --text-dim:#8a92a0; --text-faint:#5a626e;
+    --accent:#2fd17a; --accent-deep:#10b573; --accent-ink:#062417;
+    --danger:#ef4f4f; --danger-ink:#2a0d0d; --warn:#f5a623;
+    --field:#2c7a3f; --field-line:rgba(255,255,255,.85);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:"Hanken Grotesk",sans-serif;
+    background:var(--bg); color:var(--text);
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* зерно для глубины */
+  body::after{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:9999; opacity:.035;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .app{display:flex;flex-direction:column;height:100vh}
+
+  /* ===== TOP BAR / TOOLBAR ===== */
+  .topbar{
+    display:flex;align-items:flex-end;gap:18px;
+    padding:10px 14px 12px;
+    background:linear-gradient(180deg,#181c23,#13161c);
+    border-bottom:1px solid var(--border);
+    position:relative;
+  }
+  .topbar::before{ /* тонкая акцентная линия снизу */
+    content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;
+    background:linear-gradient(90deg,transparent,var(--accent),transparent);
+    opacity:.5;
+  }
+
+  .brand{display:flex;align-items:center;gap:10px;padding-right:16px;border-right:1px solid var(--border-soft);align-self:stretch}
+  .brand .mark{
+    width:30px;height:30px;border-radius:8px;display:grid;place-items:center;
+    background:radial-gradient(120% 120% at 30% 20%,#3bef8f,#0e9c61);
+    box-shadow:0 0 0 1px rgba(63,239,143,.35), 0 8px 22px -8px rgba(16,181,115,.7);
+    color:#062417;
+  }
+  .brand .mark svg{width:18px;height:18px}
+  .brand .name{font-family:"Oxanium",sans-serif;font-weight:800;font-size:15px;letter-spacing:.02em;line-height:1}
+  .brand .name span{color:var(--accent)}
+  .brand .sub{font:500 9.5px "IBM Plex Mono";letter-spacing:.14em;text-transform:uppercase;color:var(--text-faint);margin-top:3px}
+
+  .groups{display:flex;align-items:flex-end;gap:16px;flex:1;min-width:0;flex-wrap:wrap}
+  .group{display:flex;flex-direction:column;gap:6px}
+  .glabel{font:600 9px "IBM Plex Mono";letter-spacing:.14em;text-transform:uppercase;color:var(--text-faint);padding-left:4px}
+
+  /* сегментированный контрол */
+  .seg{
+    display:inline-flex;align-items:center;gap:1px;
+    background:var(--panel-2);border:1px solid var(--border);
+    border-radius:9px;padding:3px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.02);
+  }
+  .btn{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:7px 10px;border-radius:6px;border:0;cursor:pointer;
+    background:transparent;color:var(--text-dim);
+    font:500 12.5px "Hanken Grotesk";white-space:nowrap;
+    transition:background .14s,color .14s,transform .05s;
+  }
+  .btn svg{width:15px;height:15px;flex:none}
+  .btn:hover{background:var(--panel-3);color:var(--text)}
+  .btn:active{transform:translateY(1px)}
+  .btn.icon-only{padding:7px 8px}
+  .btn.danger:hover{background:rgba(239,79,79,.14);color:var(--danger)}
+  .btn.on{background:rgba(47,209,122,.16);color:var(--accent);box-shadow:inset 0 0 0 1px rgba(47,209,122,.3)}
+  .btn[disabled]{opacity:.35;cursor:not-allowed}
+  .btn[disabled]:hover{background:transparent;color:var(--text-dim)}
+
+  .divider{width:1px;align-self:stretch;background:var(--border-soft);margin:2px 0}
+
+  .caret{font-size:9px;opacity:.6;margin-left:1px}
+
+  .right{margin-left:auto;display:flex;align-items:flex-end;gap:12px}
+  .cta{
+    display:inline-flex;align-items:center;gap:9px;
+    padding:9px 16px;border-radius:9px;border:0;cursor:pointer;
+    background:linear-gradient(180deg,#3bef8f,#10b573);
+    color:var(--accent-ink);
+    font:700 13px "Hanken Grotesk";letter-spacing:.01em;
+    box-shadow:0 0 0 1px rgba(63,239,143,.45),0 10px 26px -10px rgba(16,181,115,.8);
+    transition:transform .05s,filter .14s;
+  }
+  .cta:hover{filter:brightness(1.06)}
+  .cta:active{transform:translateY(1px)}
+  .cta svg{width:16px;height:16px}
+
+  /* ===== BODY ===== */
+  .body{flex:1;display:flex;min-height:0}
+  .side{width:244px;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0}
+  .side.right{border-right:0;border-left:1px solid var(--border);width:284px}
+  .side-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:11px 13px;border-bottom:1px solid var(--border);
+  }
+  .side-head h3{margin:0;font:700 10px "IBM Plex Mono";letter-spacing:.15em;text-transform:uppercase;color:var(--text-dim)}
+  .pill{font:600 10px "IBM Plex Mono";color:var(--text-faint);background:var(--panel-2);padding:2px 7px;border-radius:20px;border:1px solid var(--border-soft)}
+
+  .layer{display:flex;align-items:center;gap:8px;padding:7px 11px;border-bottom:1px solid var(--border-soft);cursor:pointer}
+  .layer:hover{background:var(--panel-2)}
+  .layer.sel{background:rgba(47,209,122,.10);box-shadow:inset 3px 0 0 var(--accent)}
+  .layer .ic{width:18px;height:18px;border-radius:5px;display:grid;place-items:center;background:var(--panel-3);color:var(--accent);font-size:11px;flex:none}
+  .layer .nm{flex:1;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .layer.off{opacity:.45}
+  .layer .eye{width:24px;height:22px;border:0;background:transparent;color:var(--text-faint);cursor:pointer;border-radius:5px;display:grid;place-items:center}
+  .layer .eye:hover{background:var(--panel-3);color:var(--text)}
+
+  .props{padding:13px}
+  .field{margin-bottom:12px}
+  .field label{display:block;font:600 9.5px "IBM Plex Mono";letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint);margin-bottom:5px}
+  .ctrl{width:100%;background:var(--panel-2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 9px;font:500 12.5px "Hanken Grotesk";outline:none}
+  .ctrl:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,209,122,.15)}
+  select.ctrl{appearance:none;cursor:pointer}
+  .row2{display:flex;gap:8px}
+  .swatch{display:flex;gap:7px;align-items:center}
+  .swatch i{width:22px;height:22px;border-radius:6px;border:1px solid var(--border);flex:none}
+
+  /* canvas placeholder = стилизованное поле */
+  .stage{flex:1;min-width:0;padding:18px;display:grid;place-items:center;background:radial-gradient(120% 120% at 50% 0%,#12151b,#0d0f13)}
+  .fieldwrap{position:relative;width:100%;max-width:760px;aspect-ratio:1050/750;border-radius:14px;overflow:hidden;box-shadow:0 30px 70px -30px #000,0 0 0 1px var(--border)}
+  .fieldbg{position:absolute;inset:0;background:linear-gradient(180deg,#2f8a45,#236b34)}
+  .fieldbg::before{ /* линии поля */
+    content:"";position:absolute;inset:0;
+    background-image:linear-gradient(var(--field-line),var(--field-line));
+    background-size:100% 100%,2px 100%,2px 100%,2px 100%,2px 100%;
+    background-repeat:no-repeat;
+    background-position:
+      0 0, 50% 0, 10% 0, 90% 0, 25% 0;
+    -webkit-mask:
+      linear-gradient(#000,#000) content-box, /* не нужно */
+      conic-gradient(#000 0 0);
+  }
+  .lines{position:absolute;inset:0;pointer-events:none}
+  .lines div{position:absolute;background:var(--field-line)}
+  .lh{left:0;right:0;height:2px;opacity:.85}            /* центр горизонталь */
+  .lv{top:0;bottom:0;width:2px;opacity:.7}               /* вертикали */
+  .chip{
+    position:absolute;width:34px;height:34px;border-radius:50%;
+    display:grid;place-items:center;color:#fff;font:700 13px "Hanken Grotesk";
+    box-shadow:0 6px 14px rgba(0,0,0,.4),inset 0 0 0 2px rgba(255,255,255,.85)
+  }
+  .chip.blue{background:#1565c0;left:14%;top:34%}
+  .chip.blue2{background:#1565c0;left:24%;top:54%}
+  .ball{position:absolute;width:16px;height:11px;border-radius:50%;background:#fff;box-shadow:0 4px 8px rgba(0,0,0,.4);left:11%;top:20%}
+  .corner{position:absolute;top:12px;left:14px;font:600 10px "IBM Plex Mono";letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.6)}
+
+  /* ===== TIMELINE ===== */
+  .tl{background:var(--panel);border-top:1px solid var(--border)}
+  .tl-head{display:flex;align-items:center;gap:12px;padding:9px 13px;border-bottom:1px solid var(--border-soft)}
+  .play{
+    display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:7px;border:0;cursor:pointer;
+    background:var(--accent);color:var(--accent-ink);font:700 12px "Hanken Grotesk");
+    box-shadow:0 0 0 1px rgba(63,239,143,.4)
+  }
+  .tc{font:600 13px "IBM Plex Mono";color:var(--text)}
+  .tc small{color:var(--text-faint)}
+  .ruler{height:64px;position:relative;padding:0 13px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ TOP BAR ============ -->
+  <div class="topbar">
+
+    <div class="brand">
+      <div class="mark">
+        <!-- регбийный мяч-ромб -->
+        <svg viewBox="0 0 24 24" fill="none"><ellipse cx="12" cy="12" rx="9" ry="5.5" stroke="currentColor" stroke-width="2"/><path d="M8 9.5c1.3 1.6 1.3 3.4 0 5M16 9.5c-1.3 1.6-1.3 3.4 0 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </div>
+      <div>
+        <div class="name">COMBO<span>·</span>CREATOR</div>
+        <div class="sub">Rugby tactics studio</div>
+      </div>
+    </div>
+
+    <div class="groups">
+
+      <!-- ИСТОРИЯ -->
+      <div class="group">
+        <div class="glabel">История</div>
+        <div class="seg">
+          <button class="btn icon-only" title="Отменить (Ctrl+Z)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a6 6 0 0 1 0 12h-4"/></svg>
+          </button>
+          <button class="btn icon-only" title="Вернуть (Ctrl+Shift+Z)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9a6 6 0 0 0 0 12h4"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- ДОБАВИТЬ -->
+      <div class="group">
+        <div class="glabel">Добавить объект</div>
+        <div class="seg">
+          <button class="btn" title="Игрок">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0" stroke-linecap="round"/></svg>Игрок
+          </button>
+          <button class="btn" title="Мяч">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><ellipse cx="12" cy="12" rx="8" ry="5"/><path d="M8.5 9.5c1 1.3 1 3 0 4.3M15.5 9.5c-1 1.3-1 3 0 4.3" stroke-linecap="round"/></svg>Мяч
+          </button>
+          <button class="btn" title="Стрелка">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h14M13 6l6 6-6 6"/></svg>Стрелка
+          </button>
+          <button class="btn" title="Круг">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="7"/></svg>Круг
+          </button>
+          <button class="btn" title="Текст">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6h14M12 6v13M9 19h6"/></svg>Текст
+          </button>
+          <button class="btn" title="Прямоугольник">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="6" width="16" height="12" rx="1.5"/></svg>Прямоуг
+          </button>
+          <button class="btn" title="Подсветка зоны">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m4 20 11-11 4 4-11 11H4v-4Z"/><path d="m14 6 4 4"/></svg>Зона
+          </button>
+        </div>
+      </div>
+
+      <!-- ПРАВКА -->
+      <div class="group">
+        <div class="glabel">Правка</div>
+        <div class="seg">
+          <button class="btn" title="Дублировать (Ctrl+D)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M4 16V5a1 1 0 0 1 1-1h11" stroke-linecap="round"/></svg>Дублировать
+          </button>
+          <button class="btn danger" title="Удалить (Delete)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>Удалить
+          </button>
+          <button class="btn on" title="Привязка к сетке">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 4h16v16H4z"/><path d="M4 10h16M4 16h16M10 4v16M16 4v16" opacity=".6"/></svg>Сетка
+          </button>
+        </div>
+      </div>
+
+      <!-- ФАЙЛ -->
+      <div class="group">
+        <div class="glabel">Файл</div>
+        <div class="seg">
+          <button class="btn" title="Сохранить проект">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7M8 20v-6h8v6"/></svg>
+            Сохранить <span class="caret">▾ JSON</span>
+          </button>
+          <button class="btn" title="Открыть проект">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h6l2 2h10v10H3z"/></svg>
+            Открыть <span class="caret">▾</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="right">
+      <button class="cta" title="Экспорт в GIF">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5v14l11-7z" fill="currentColor" stroke="none"/></svg>
+        Экспорт GIF
+      </button>
+    </div>
+  </div>
+
+  <!-- ============ BODY ============ -->
+  <div class="body">
+
+    <!-- LAYERS -->
+    <aside class="side">
+      <div class="side-head"><h3>Слои</h3><span class="pill">8</span></div>
+      <div class="layer sel"><span class="ic">●</span><span class="nm">Игрок #10</span><button class="eye" title="видимость">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+      <div class="layer"><span class="ic">●</span><span class="nm">Игрок #9</span><button class="eye"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+      <div class="layer"><span class="ic">○</span><span class="nm">Мяч</span><button class="eye"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+      <div class="layer off"><span class="ic">→</span><span class="nm">Стрелка</span><button class="eye"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 3l18 18M10.5 10.5a3 3 0 0 0 4 4M6 6c-2 1.5-4 6-4 6s4 7 10 7c2 0 3.7-.7 5-1.7M19 16c1.7-1.5 3-4 3-4s-4-7-10-7c-1 0-1.9.2-2.7.5"/></svg></button></div>
+    </aside>
+
+    <!-- CANVAS -->
+    <main class="stage">
+      <div class="fieldwrap">
+        <div class="fieldbg"></div>
+        <div class="lines">
+          <div class="lh" style="top:50%"></div>
+          <div class="lv" style="left:50%"></div>
+          <div class="lv" style="left:10%"></div>
+          <div class="lv" style="left:90%"></div>
+          <div class="lv" style="left:25%;opacity:.4"></div>
+          <div class="lv" style="left:75%;opacity:.4"></div>
+        </div>
+        <div class="corner">Поле · 1050×750</div>
+        <div class="chip blue">10</div>
+        <div class="chip blue2">9</div>
+        <div class="ball"></div>
+      </div>
+    </main>
+
+    <!-- PROPERTIES -->
+    <aside class="side right">
+      <div class="side-head"><h3>Свойства · Игрок</h3></div>
+      <div class="props">
+        <div class="row2">
+          <div class="field"><label>Команда</label>
+            <select class="ctrl"><option>Синяя</option><option>Красная</option></select>
+          </div>
+          <div class="field"><label>Номер</label>
+            <input class="ctrl" value="10" />
+          </div>
+        </div>
+        <div class="field"><label>Цвет</label>
+          <div class="swatch"><i style="background:#1565c0"></i><input class="ctrl" value="#1565c0" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Радиус</label><input class="ctrl" value="18" /></div>
+          <div class="field"><label>Z-index</label><input class="ctrl" value="1" /></div>
+        </div>
+        <div class="field"><label>Поворот °</label><input class="ctrl" value="0" /></div>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- ============ TIMELINE ============ -->
+  <div class="tl">
+    <div class="tl-head">
+      <button class="play">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        Воспроизвести
+      </button>
+      <div class="tc">00:02.4 <small>/ 00:10.0</small></div>
+      <div style="flex:1"></div>
+      <span class="pill">24 fps · linear</span>
+    </div>
+    <div class="ruler"></div>
+  </div>
+
+</div>
+</body>
+</html>

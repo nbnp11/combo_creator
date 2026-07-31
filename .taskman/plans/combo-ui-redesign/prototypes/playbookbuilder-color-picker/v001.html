@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PlaybookBuilder — редизайн</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#16191f; --panel-2:#1b1f27; --panel-3:#222732;
+    --border:#262b34; --border-soft:#1f242c;
+    --text:#e8eaee; --text-dim:#8b929e; --text-faint:#5b626d;
+    --accent:#2fd17a; --accent-deep:#10b573; --accent-ink:#062417;
+    --danger:#ef4f4f;
+    --field-line:rgba(255,255,255,.85);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:"Hanken Grotesk",sans-serif;
+    background:var(--bg); color:var(--text); overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{display:flex;flex-direction:column;height:100vh}
+
+  /* ===== TOOLBAR ===== */
+  .topbar{display:flex;align-items:center;gap:0;padding:0 12px;height:50px;background:var(--panel);border-bottom:1px solid var(--border)}
+  .brand{font-weight:800;font-size:15px;letter-spacing:-.01em;padding-right:14px;margin-right:6px;border-right:1px solid var(--border-soft);display:flex;align-items:center;gap:7px;height:100%}
+  .brand b{color:var(--accent)}
+  .brand .dot{width:7px;height:7px;border-radius:2px;background:var(--accent);transform:rotate(45deg)}
+  .group{display:flex;align-items:center;gap:2px;padding:0 6px;height:100%}
+  .group + .group{border-left:1px solid var(--border-soft)}
+  .glabel{font:600 8.5px "IBM Plex Mono";letter-spacing:.16em;text-transform:uppercase;color:var(--text-faint);padding-right:8px;white-space:nowrap}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;border:0;cursor:pointer;background:transparent;color:var(--text-dim);font:500 13px "Hanken Grotesk";white-space:nowrap;transition:background .13s,color .13s}
+  .btn:hover{background:var(--panel-3);color:var(--text)}
+  .btn.danger:hover{background:rgba(239,79,79,.13);color:var(--danger)}
+  .btn.on{background:rgba(47,209,122,.15);color:var(--accent)}
+  .btn[disabled]{opacity:.35;cursor:not-allowed}
+  .right{margin-left:auto;display:flex;align-items:center;height:100%}
+  .cta{display:inline-flex;align-items:center;padding:8px 16px;border-radius:7px;border:0;cursor:pointer;background:var(--accent);color:var(--accent-ink);font:700 13px "Hanken Grotesk";transition:filter .13s}
+  .cta:hover{filter:brightness(1.07)}
+
+  /* ===== BODY ===== */
+  .body{flex:1;display:flex;min-height:0}
+  .side{width:224px;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0}
+  .side.right{border-right:0;border-left:1px solid var(--border);width:268px}
+  .side-head{padding:12px 14px;border-bottom:1px solid var(--border);font:700 10px "IBM Plex Mono";letter-spacing:.15em;text-transform:uppercase;color:var(--text-dim)}
+  .layer{display:flex;align-items:center;gap:9px;padding:8px 13px;border-bottom:1px solid var(--border-soft);cursor:pointer;font-size:13px}
+  .layer:hover{background:var(--panel-2)}
+  .layer.sel{background:rgba(47,209,122,.10);box-shadow:inset 3px 0 0 var(--accent)}
+  .layer .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .layer.off .nm{opacity:.45}
+  .layer input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:pointer}
+
+  .props{padding:14px}
+  .field{margin-bottom:12px}
+  .field label{display:block;font:600 9.5px "IBM Plex Mono";letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint);margin-bottom:5px}
+  .ctrl{width:100%;background:var(--panel-2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 9px;font:500 13px "Hanken Grotesk";outline:none}
+  .ctrl:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,209,122,.13)}
+  select.ctrl{appearance:none;cursor:pointer}
+  .row2{display:flex;gap:8px}
+
+  /* color picker */
+  .colorpick{display:flex;align-items:stretch;gap:8px}
+  .colorpick input[type=color]{
+    -webkit-appearance:none;appearance:none;
+    width:46px;height:34px;border:1px solid var(--border);border-radius:6px;
+    background:transparent;cursor:pointer;padding:0;flex:none;
+  }
+  .colorpick input[type=color]::-webkit-color-swatch-wrapper{padding:3px}
+  .colorpick input[type=color]::-webkit-color-swatch{border:none;border-radius:4px}
+  .colorpick .hex{flex:1;display:flex;align-items:center;background:var(--panel-2);border:1px solid var(--border);border-radius:6px;padding:0 10px;font:600 12.5px "IBM Plex Mono";color:var(--text-dim)}
+
+  /* field */
+  .stage{flex:1;min-width:0;background:radial-gradient(130% 120% at 50% 0%,#13161c,#0d0f13);display:flex;align-items:center;justify-content:center;padding:20px}
+  .fieldwrap{width:100%;aspect-ratio:1050/750;border-radius:10px;overflow:hidden;border:1px solid #1f3a26;position:relative;max-height:100%}
+  .fieldbg{position:absolute;inset:0;background:linear-gradient(180deg,#2f8a45,#236b34)}
+  .lines{position:absolute;inset:0;pointer-events:none}
+  .lines div{position:absolute;background:var(--field-line)}
+  .lh{left:0;right:0;height:2px;opacity:.85}
+  .lv{top:0;bottom:0;width:2px;opacity:.6}
+  .chip{position:absolute;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:#fff;font:700 13px "Hanken Grotesk";box-shadow:0 5px 12px rgba(0,0,0,.4),inset 0 0 0 2px rgba(255,255,255,.85)}
+  .chip.b1{background:#1565c0;left:14%;top:32%}
+  .chip.b2{background:#1565c0;left:22%;top:52%}
+  .ball{position:absolute;width:15px;height:10px;border-radius:50%;background:#fff;box-shadow:0 4px 8px rgba(0,0,0,.4);left:11%;top:20%}
+
+  /* ===== TIMELINE ===== */
+  .tl{background:var(--panel);border-top:1px solid var(--border)}
+  .tl-head{display:flex;align-items:center;gap:14px;padding:10px 14px;border-bottom:1px solid var(--border-soft)}
+  .play{display:inline-flex;align-items:center;padding:6px 14px;border-radius:6px;border:0;cursor:pointer;background:var(--accent);color:var(--accent-ink);font:700 12.5px "Hanken Grotesk"}
+  .tc{font:600 13px "IBM Plex Mono";color:var(--text)}
+  .tc small{color:var(--text-faint)}
+  .ruler{height:60px;position:relative}
+  .playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--accent)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOOLBAR -->
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span>Playbook<b>Builder</b></div>
+
+    <div class="group">
+      <span class="glabel">История</span>
+      <button class="btn">Отменить</button>
+      <button class="btn">Вернуть</button>
+    </div>
+
+    <div class="group">
+      <span class="glabel">Добавить</span>
+      <button class="btn">Игрок</button>
+      <button class="btn">Мяч</button>
+      <button class="btn">Стрелка</button>
+      <button class="btn">Круг</button>
+      <button class="btn">Текст</button>
+      <button class="btn">Прямоуг</button>
+      <button class="btn">Зона</button>
+    </div>
+
+    <div class="group">
+      <span class="glabel">Правка</span>
+      <button class="btn">Дублировать</button>
+      <button class="btn danger">Удалить</button>
+      <button class="btn on">Сетка</button>
+    </div>
+
+    <div class="group">
+      <span class="glabel">Файл</span>
+      <button class="btn">Сохранить</button>
+      <button class="btn">Открыть</button>
+    </div>
+
+    <div class="right">
+      <button class="cta">Экспорт GIF</button>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="body">
+
+    <aside class="side">
+      <div class="side-head">Слои</div>
+      <div class="layer sel"><span class="nm">Игрок #10</span><input type="checkbox" checked></div>
+      <div class="layer"><span class="nm">Игрок #9</span><input type="checkbox" checked></div>
+      <div class="layer"><span class="nm">Мяч</span><input type="checkbox" checked></div>
+      <div class="layer off"><span class="nm">Стрелка</span><input type="checkbox"></div>
+    </aside>
+
+    <main class="stage">
+      <div class="fieldwrap">
+        <div class="fieldbg"></div>
+        <div class="lines">
+          <div class="lh" style="top:50%"></div>
+          <div class="lv" style="left:50%"></div>
+          <div class="lv" style="left:10%"></div>
+          <div class="lv" style="left:90%"></div>
+          <div class="lv" style="left:25%;opacity:.35"></div>
+          <div class="lv" style="left:75%;opacity:.35"></div>
+        </div>
+        <div class="chip b1">10</div>
+        <div class="chip b2">9</div>
+        <div class="ball"></div>
+      </div>
+    </main>
+
+    <aside class="side right">
+      <div class="side-head">Свойства · Игрок</div>
+      <div class="props">
+        <div class="row2">
+          <div class="field"><label>Команда</label><select class="ctrl"><option>Синяя</option><option>Красная</option></select></div>
+          <div class="field"><label>Номер</label><input class="ctrl" value="10"></div>
+        </div>
+        <div class="field">
+          <label>Цвет</label>
+          <div class="colorpick">
+            <input type="color" value="#1565c0">
+            <span class="hex">#1565C0</span>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Радиус</label><input class="ctrl" value="18"></div>
+          <div class="field"><label>Z-index</label><input class="ctrl" value="1"></div>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- TIMELINE -->
+  <div class="tl">
+    <div class="tl-head">
+      <button class="play">Воспроизвести</button>
+      <div class="tc">00:02.4 <small>/ 00:10.0</small></div>
+      <div style="flex:1"></div>
+    </div>
+    <div class="ruler">
+      <div class="playhead" style="left:24%"></div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

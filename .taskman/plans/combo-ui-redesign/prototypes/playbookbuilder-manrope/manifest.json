@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "plan": "combo-ui-redesign",
+  "slug": "playbookbuilder-manrope",
+  "title": "PlaybookBuilder — шрифт Manrope",
+  "created_at": "2026-07-31T18:19:48.616Z",
+  "updated_at": "2026-07-31T18:19:48.616Z",
+  "latest_version": 1,
+  "versions": [
+    {
+      "version": 1,
+      "file": "v001.html",
+      "intent": "Основной шрифт — Manrope (мягкий приятный гротеск), подписи в Manrope uppercase с трекингом, моно (Azeret Mono) только для таймкода",
+      "created_at": "2026-07-31T18:19:48.616Z"
+    }
+  ]
+}
