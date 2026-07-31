@@ -1,8 +1,10 @@
 import GIF from "gif.js";
 import workerUrl from "gif.js/dist/gif.worker.js?url";
 import Konva from "konva";
+import { drawObjectInto } from "../canvas/drawObject";
 import { getFieldMarks } from "../canvas/fieldMarks";
 import { FIELD } from "../config/field";
+import type { InterpolationMode } from "../timeline/interpolator";
 import { interpolate } from "../timeline/interpolator";
 import type { ObjectData, ProjectSettings } from "../types";
 
@@ -31,39 +33,17 @@ function addFieldToLayer(layer: Konva.Layer): void {
   }
 }
 
-/** Императивная отрисовка одного объекта в момент t. */
-function addObjectToLayer(layer: Konva.Layer, obj: ObjectData, t: number): void {
+/** Императивная отрисовка одного объекта в момент t через общий drawObjectInto. */
+function addObjectToLayer(
+  layer: Konva.Layer,
+  obj: ObjectData,
+  t: number,
+  mode: InterpolationMode,
+): void {
   if (!obj.visible) return;
-  const p = interpolate(obj.track, t);
+  const p = interpolate(obj.track, t, mode);
   const group = new Konva.Group({ x: p.x, y: p.y, rotation: p.rotation, listening: false });
-  if (obj.kind === "player") {
-    group.add(
-      new Konva.Circle({ radius: obj.radius, fill: obj.color, stroke: "#ffffff", strokeWidth: 2 }),
-      new Konva.Text({
-        text: String(obj.number),
-        fontSize: obj.radius,
-        fontStyle: "bold",
-        fill: "#ffffff",
-        align: "center",
-        verticalAlign: "middle",
-        width: obj.radius * 2,
-        height: obj.radius * 2,
-        x: -obj.radius,
-        y: -obj.radius,
-        listening: false,
-      }),
-    );
-  } else if (obj.kind === "ball") {
-    group.add(
-      new Konva.Circle({
-        radius: obj.radius,
-        fill: obj.color,
-        stroke: "#333333",
-        strokeWidth: 1,
-        listening: false,
-      }),
-    );
-  }
+  drawObjectInto(group, obj, false); // selected=false: в экспорте подсветки нет
   layer.add(group);
 }
 
@@ -94,13 +74,14 @@ export async function exportGif(
   stage.add(layer);
 
   const sorted = [...objects].sort((a, b) => a.zIndex - b.zIndex);
+  const mode = settings.interpolation ?? "linear";
 
   try {
     for (let i = 0; i < totalFrames; i++) {
       const t = i / settings.fps;
       layer.destroyChildren();
       addFieldToLayer(layer);
-      for (const obj of sorted) addObjectToLayer(layer, obj, t);
+      for (const obj of sorted) addObjectToLayer(layer, obj, t, mode);
       layer.draw();
       const canvas = stage.toCanvas({ pixelRatio: scale });
       gif.addFrame(canvas, { delay, copy: true });

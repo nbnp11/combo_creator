@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
+import { objectLabel } from "../canvas/objectMeta";
 import { useProjectStore } from "../store/projectStore";
 import type { ObjectData } from "../types";
 import { interpolate } from "./interpolator";
@@ -8,17 +9,12 @@ const LABEL_WIDTH = 120; // px, левая колонка с именем объ
 const ROW_HEIGHT = 32; // px
 const RULER_HEIGHT = 24; // px
 
-function objectLabel(o: ObjectData): string {
-  if (o.kind === "player") return `Игрок #${o.number}`;
-  if (o.kind === "ball") return "Мяч";
-  return "Объект";
-}
-
 export default function Timeline() {
   const objects = useProjectStore((s) => s.objects);
-  const selectedId = useProjectStore((s) => s.selectedId);
+  const selectedIds = useProjectStore((s) => s.selectedIds);
   const currentTime = useProjectStore((s) => s.currentTime);
   const duration = useProjectStore((s) => s.settings.durationSec);
+  const interpolation = useProjectStore((s) => s.settings.interpolation ?? "linear");
   const setCurrentTime = useProjectStore((s) => s.setCurrentTime);
   const select = useProjectStore((s) => s.select);
   const setKeyframe = useProjectStore((s) => s.setKeyframe);
@@ -89,8 +85,8 @@ export default function Timeline() {
 
   const handleTrackDoubleClick = (e: React.MouseEvent, obj: ObjectData) => {
     e.stopPropagation();
-    if (selectedId !== obj.id) select(obj.id);
-    const pos = interpolate(obj.track, currentTime);
+    if (!selectedIds.includes(obj.id)) select(obj.id);
+    const pos = interpolate(obj.track, currentTime, interpolation);
     setKeyframe(obj.id, { time: currentTime, x: pos.x, y: pos.y, rotation: pos.rotation });
   };
 
@@ -190,7 +186,7 @@ export default function Timeline() {
         </div>
 
         {objects.map((obj) => {
-          const selected = selectedId === obj.id;
+          const selected = selectedIds.includes(obj.id);
           return (
             <div
               key={obj.id}
@@ -203,7 +199,7 @@ export default function Timeline() {
             >
               <button
                 type="button"
-                onClick={() => select(obj.id)}
+                onClick={(e) => select(obj.id, e.shiftKey)}
                 style={{
                   width: LABEL_WIDTH,
                   borderRight: "1px solid #444",

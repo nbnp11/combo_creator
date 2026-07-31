@@ -1,3 +1,5 @@
+import type { InterpolationMode } from "../timeline/interpolator";
+
 export type ObjectKind =
   | "player"
   | "ball"
@@ -36,18 +38,63 @@ export interface BallData extends BaseObjectData {
   color: string;
 }
 
-// arrow/circle/text/rectangle/highlight добавляются на этапе deepening.
-export type ObjectData = PlayerData | BallData;
+export interface ArrowData extends BaseObjectData {
+  kind: "arrow";
+  points: [number, number]; // конец стрелки относительно позиции объекта (локальные координаты группы)
+  stroke: string;
+  strokeWidth: number;
+}
 
-export interface ProjectSettings {
+export interface CircleData extends BaseObjectData {
+  kind: "circle";
+  radius: number;
+  stroke: string;
+  fill: string;
+}
+
+export interface TextData extends BaseObjectData {
+  kind: "text";
+  text: string;
+  fontSize: number;
+  fill: string;
+}
+
+export interface RectangleData extends BaseObjectData {
+  kind: "rectangle";
+  width: number;
+  height: number;
+  stroke: string;
+  fill: string;
+}
+
+export interface HighlightData extends BaseObjectData {
+  kind: "highlight";
+  width: number;
+  height: number;
+  color: string;
+  opacity: number;
+}
+
+export type ObjectData =
+  | PlayerData
+  | BallData
+  | ArrowData
+  | CircleData
+  | TextData
+  | RectangleData
+  | HighlightData;
+
+export type ProjectSettings = {
   fps: 15 | 24 | 30;
   size: 720 | 1080 | 1440;
   durationSec: number;
-}
+  /** Режим интерполяции треков (глобально). Отсутствует в старых файлах — трактуется как linear. */
+  interpolation?: InterpolationMode;
+};
 
-export interface ProjectSchema {
+export type ProjectSchema = {
   schemaVersion: number;
   field: "rugby";
   settings: ProjectSettings;
   objects: ObjectData[]; // каждый объект со своим треком ключей
-}
+};

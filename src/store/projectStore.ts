@@ -1,12 +1,31 @@
-import { create } from "zustand";
-import type { BallData, Keyframe, ObjectData, PlayerData, ProjectSettings } from "../types";
+import { temporal } from "zundo";
+import { create, useStore } from "zustand";
+import type {
+  ArrowData,
+  BallData,
+  CircleData,
+  HighlightData,
+  Keyframe,
+  ObjectData,
+  PlayerData,
+  ProjectSettings,
+  RectangleData,
+  TextData,
+} from "../types";
 
 export const SCHEMA_VERSION = 1;
 
-/** Патч для объекта: объединение частичных видов по типам (без kind — дискриминант не меняем). */
-export type ObjectPatch = Partial<Omit<PlayerData, "kind">> | Partial<Omit<BallData, "kind">>;
+/** Патч для объекта: объединение частичных видов по всем типам (без kind — дискриминант не меняем). */
+export type ObjectPatch = {
+  [K in ObjectData["kind"]]: Partial<Omit<Extract<ObjectData, { kind: K }>, "kind">>;
+}[ObjectData["kind"]];
 
-const DEFAULT_SETTINGS: ProjectSettings = { fps: 24, size: 1080, durationSec: 10 };
+const DEFAULT_SETTINGS: ProjectSettings = {
+  fps: 24,
+  size: 1080,
+  durationSec: 10,
+  interpolation: "linear",
+};
 
 function uid(prefix: string): string {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
@@ -48,22 +67,95 @@ export function createBall(x: number, y: number): BallData {
   };
 }
 
+export function createArrow(x: number, y: number): ArrowData {
+  return {
+    id: uid("a"),
+    kind: "arrow",
+    visible: true,
+    zIndex: 3,
+    points: [80, 0],
+    stroke: "#ffffff",
+    strokeWidth: 5,
+    track: [{ time: 0, x, y, rotation: 0 }],
+  };
+}
+
+export function createCircle(x: number, y: number): CircleData {
+  return {
+    id: uid("c"),
+    kind: "circle",
+    visible: true,
+    zIndex: 1,
+    radius: 40,
+    stroke: "#ffeb3b",
+    fill: "rgba(255,235,59,0.15)",
+    track: [{ time: 0, x, y, rotation: 0 }],
+  };
+}
+
+export function createText(x: number, y: number): TextData {
+  return {
+    id: uid("t"),
+    kind: "text",
+    visible: true,
+    zIndex: 4,
+    text: "Текст",
+    fontSize: 28,
+    fill: "#ffffff",
+    track: [{ time: 0, x, y, rotation: 0 }],
+  };
+}
+
+export function createRectangle(x: number, y: number): RectangleData {
+  return {
+    id: uid("r"),
+    kind: "rectangle",
+    visible: true,
+    zIndex: 1,
+    width: 120,
+    height: 80,
+    stroke: "#ffffff",
+    fill: "rgba(255,255,255,0.1)",
+    track: [{ time: 0, x, y, rotation: 0 }],
+  };
+}
+
+export function createHighlight(x: number, y: number): HighlightData {
+  return {
+    id: uid("h"),
+    kind: "highlight",
+    visible: true,
+    zIndex: 0,
+    width: 160,
+    height: 120,
+    color: "#ffeb3b",
+    opacity: 0.25,
+    track: [{ time: 0, x, y, rotation: 0 }],
+  };
+}
+
 interface ProjectState {
   settings: ProjectSettings;
   objects: ObjectData[];
-  selectedId: string | null;
+  selectedIds: string[];
   currentTime: number;
   isPlaying: boolean;
+  snapEnabled: boolean;
   addObject: (obj: ObjectData) => void;
   removeObject: (id: string) => void;
+  removeSelected: () => void;
+  duplicateSelected: () => void;
+  reorderObject: (id: string, direction: "up" | "down") => void;
   updateObject: (id: string, patch: ObjectPatch) => void;
   setKeyframe: (id: string, kf: Keyframe) => void;
   moveKeyframe: (id: string, oldTime: number, newTime: number) => void;
   removeKeyframe: (id: string, time: number) => void;
-  select: (id: string | null) => void;
+  select: (id: string | null, additive?: boolean) => void;
+  clearSelection: () => void;
   setCurrentTime: (t: number) => void;
   setPlaying: (p: boolean) => void;
   updateSettings: (patch: Partial<ProjectSettings>) => void;
+  toggleSnap: () => void;
   loadProject: (p: { settings: ProjectSettings; objects: ObjectData[] }) => void;
 }
 
@@ -72,64 +164,159 @@ function patchObject<T extends ObjectData>(obj: T, patch: ObjectPatch): T {
   return { ...obj, ...(patch as Partial<T>) } as T;
 }
 
-export const useProjectStore = create<ProjectState>((set) => ({
-  settings: DEFAULT_SETTINGS,
-  objects: createDefaultProject(),
-  selectedId: null,
-  currentTime: 0,
-  isPlaying: false,
+/** Префикс id по типу объекта (для клонов). */
+function prefixForKind(kind: ObjectData["kind"]): string {
+  return {
+    player: "p",
+    ball: "b",
+    arrow: "a",
+    circle: "c",
+    text: "t",
+    rectangle: "r",
+    highlight: "h",
+  }[kind];
+}
 
-  addObject: (obj) => set((s) => ({ objects: [...s.objects, withSortedTrack(obj)] })),
+/** Глубокий клон объекта с новым id, новым z-order и смещением всех ключей трека. */
+function cloneObject(src: ObjectData, zIndex: number, offset = 20): ObjectData {
+  const clone = structuredClone(src) as ObjectData;
+  clone.id = uid(prefixForKind(src.kind));
+  clone.zIndex = zIndex;
+  clone.track = src.track.map((k) => ({ ...k, x: k.x + offset, y: k.y + offset }));
+  return clone;
+}
 
-  removeObject: (id) =>
-    set((s) => ({
-      objects: s.objects.filter((o) => o.id !== id),
-      selectedId: s.selectedId === id ? null : s.selectedId,
-    })),
-
-  updateObject: (id, patch) =>
-    set((s) => ({ objects: s.objects.map((o) => (o.id === id ? patchObject(o, patch) : o)) })),
-
-  setKeyframe: (id, kf) =>
-    set((s) => ({
-      objects: s.objects.map((o) => {
-        if (o.id !== id) return o;
-        const rest = o.track.filter((k) => Math.abs(k.time - kf.time) > 1e-6);
-        return { ...o, track: [...rest, kf].sort((a, b) => a.time - b.time) };
-      }),
-    })),
-
-  moveKeyframe: (id, oldTime, newTime) =>
-    set((s) => ({
-      objects: s.objects.map((o) => {
-        if (o.id !== id) return o;
-        const moved = o.track.map((k) =>
-          Math.abs(k.time - oldTime) <= 1e-6 ? { ...k, time: newTime } : k,
-        );
-        return { ...o, track: moved.sort((a, b) => a.time - b.time) };
-      }),
-    })),
-
-  removeKeyframe: (id, time) =>
-    set((s) => ({
-      objects: s.objects.map((o) =>
-        o.id === id ? { ...o, track: o.track.filter((k) => Math.abs(k.time - time) > 1e-6) } : o,
-      ),
-    })),
-
-  select: (id) => set({ selectedId: id }),
-  setCurrentTime: (t) => set({ currentTime: t }),
-  setPlaying: (p) => set({ isPlaying: p }),
-  updateSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
-  loadProject: (p) =>
-    set({
-      settings: p.settings,
-      objects: p.objects.map(withSortedTrack),
-      selectedId: null,
+export const useProjectStore = create<ProjectState>()(
+  temporal(
+    (set) => ({
+      settings: DEFAULT_SETTINGS,
+      objects: createDefaultProject(),
+      selectedIds: [],
       currentTime: 0,
       isPlaying: false,
+      snapEnabled: false,
+
+      addObject: (obj) => set((s) => ({ objects: [...s.objects, withSortedTrack(obj)] })),
+
+      removeObject: (id) =>
+        set((s) => ({
+          objects: s.objects.filter((o) => o.id !== id),
+          selectedIds: s.selectedIds.filter((x) => x !== id),
+        })),
+
+      removeSelected: () =>
+        set((s) => {
+          if (s.selectedIds.length === 0) return {};
+          const ids = new Set(s.selectedIds);
+          return { objects: s.objects.filter((o) => !ids.has(o.id)), selectedIds: [] };
+        }),
+
+      duplicateSelected: () =>
+        set((s) => {
+          if (s.selectedIds.length === 0) return {};
+          const maxZ = s.objects.reduce((m, o) => Math.max(m, o.zIndex), 0);
+          const clones = s.selectedIds
+            .map((id) => s.objects.find((o) => o.id === id))
+            .filter((o): o is ObjectData => Boolean(o))
+            .map((src, i) => cloneObject(src, maxZ + 1 + i));
+          return { objects: [...s.objects, ...clones], selectedIds: clones.map((c) => c.id) };
+        }),
+
+      reorderObject: (id, direction) =>
+        set((s) => {
+          const sorted = [...s.objects].sort((a, b) => a.zIndex - b.zIndex);
+          const idx = sorted.findIndex((o) => o.id === id);
+          if (idx === -1) return {};
+          // up = вперёд (выше z, рисуется поверх) → к концу массива
+          const swapWith = direction === "up" ? idx + 1 : idx - 1;
+          if (swapWith < 0 || swapWith >= sorted.length) return {};
+          const a = sorted[idx];
+          const b = sorted[swapWith];
+          const aZ = a.zIndex;
+          const bZ = b.zIndex;
+          return {
+            objects: s.objects.map((o) => {
+              if (o.id === a.id) return { ...o, zIndex: bZ };
+              if (o.id === b.id) return { ...o, zIndex: aZ };
+              return o;
+            }),
+          };
+        }),
+
+      updateObject: (id, patch) =>
+        set((s) => ({ objects: s.objects.map((o) => (o.id === id ? patchObject(o, patch) : o)) })),
+
+      setKeyframe: (id, kf) =>
+        set((s) => ({
+          objects: s.objects.map((o) => {
+            if (o.id !== id) return o;
+            const rest = o.track.filter((k) => Math.abs(k.time - kf.time) > 1e-6);
+            return { ...o, track: [...rest, kf].sort((a, b) => a.time - b.time) };
+          }),
+        })),
+
+      moveKeyframe: (id, oldTime, newTime) =>
+        set((s) => ({
+          objects: s.objects.map((o) => {
+            if (o.id !== id) return o;
+            const moved = o.track.map((k) =>
+              Math.abs(k.time - oldTime) <= 1e-6 ? { ...k, time: newTime } : k,
+            );
+            return { ...o, track: moved.sort((a, b) => a.time - b.time) };
+          }),
+        })),
+
+      removeKeyframe: (id, time) =>
+        set((s) => ({
+          objects: s.objects.map((o) =>
+            o.id === id
+              ? { ...o, track: o.track.filter((k) => Math.abs(k.time - time) > 1e-6) }
+              : o,
+          ),
+        })),
+
+      select: (id, additive) =>
+        set((s) => {
+          if (id === null) return { selectedIds: [] };
+          if (!additive) return { selectedIds: [id] };
+          const has = s.selectedIds.includes(id);
+          return {
+            selectedIds: has ? s.selectedIds.filter((x) => x !== id) : [...s.selectedIds, id],
+          };
+        }),
+      clearSelection: () => set({ selectedIds: [] }),
+      setCurrentTime: (t) => set({ currentTime: t }),
+      setPlaying: (p) => set({ isPlaying: p }),
+      updateSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
+      toggleSnap: () => set((s) => ({ snapEnabled: !s.snapEnabled })),
+      loadProject: (p) =>
+        set({
+          settings: { interpolation: "linear", ...p.settings },
+          objects: p.objects.map(withSortedTrack),
+          selectedIds: [],
+          currentTime: 0,
+          isPlaying: false,
+        }),
     }),
-}));
+    {
+      // В историю попадают только объекты и настройки сцены — но НЕ currentTime/isPlaying/selectedId.
+      partialize: (s) => ({ objects: s.objects, settings: s.settings }),
+      // Если objects/settings не изменились (например, тикает только currentTime при playback) — не сохраняем.
+      equality: (a, b) => a.objects === b.objects && a.settings === b.settings,
+      limit: 100,
+    },
+  ),
+);
+
+/** Реактивный доступ к истории: undo/redo/clear + canUndo/canRedo. */
+export function useHistory() {
+  const past = useStore(useProjectStore.temporal, (s) => s.pastStates);
+  const future = useStore(useProjectStore.temporal, (s) => s.futureStates);
+  const undo = useStore(useProjectStore.temporal, (s) => s.undo);
+  const redo = useStore(useProjectStore.temporal, (s) => s.redo);
+  const clear = useStore(useProjectStore.temporal, (s) => s.clear);
+  return { undo, redo, clear, canUndo: past.length > 0, canRedo: future.length > 0 };
+}
 
 export function createDefaultProject(): ObjectData[] {
   return [

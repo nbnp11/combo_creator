@@ -1,9 +1,7 @@
-import { SCHEMA_VERSION } from "../store/projectStore";
-import type { ObjectData, ProjectSchema, ProjectSettings } from "../types";
+import type { ObjectData, ProjectSettings } from "../types";
+import { toProjectSchema } from "./schema";
 
-export function toProjectSchema(settings: ProjectSettings, objects: ObjectData[]): ProjectSchema {
-  return { schemaVersion: SCHEMA_VERSION, field: "rugby", settings, objects };
-}
+export { toProjectSchema };
 
 export function downloadProjectJson(settings: ProjectSettings, objects: ObjectData[]): void {
   const data = toProjectSchema(settings, objects);

@@ -65,3 +65,38 @@ describe("interpolate", () => {
     expect(track).toEqual(snapshot);
   });
 });
+
+describe("режимы интерполяции", () => {
+  // зигзаг по x: 0 → 10 → 0 → 10 (ломаная траектория)
+  const zig = [kf(0, 0, 0), kf(1, 10, 0), kf(2, 0, 0), kf(3, 10, 0)];
+
+  it("catmullrom проходит точно через все ключи", () => {
+    expect(interpolate(zig, 0, "catmullrom").x).toBe(0);
+    expect(interpolate(zig, 1, "catmullrom").x).toBe(10);
+    expect(interpolate(zig, 2, "catmullrom").x).toBe(0);
+    expect(interpolate(zig, 3, "catmullrom").x).toBe(10);
+  });
+
+  it("catmullrom сглаживает середину сегмента иначе, чем linear", () => {
+    const lin = interpolate(zig, 0.5, "linear").x;
+    const cm = interpolate(zig, 0.5, "catmullrom").x;
+    expect(lin).toBe(5);
+    expect(cm).not.toBe(lin); // сплайн «забегает вперёд» на изломе
+    expect(Number.isFinite(cm)).toBe(true);
+  });
+
+  it("ease проходит через ключи и сглаживает (smoothstep) середину", () => {
+    expect(interpolate(zig, 1, "ease").x).toBe(10);
+    expect(interpolate(zig, 2, "ease").x).toBe(0);
+    const lin = interpolate(zig, 0.25, "linear").x;
+    const ez = interpolate(zig, 0.25, "ease").x;
+    expect(lin).toBe(2.5);
+    expect(ez).not.toBe(lin); // smoothstep(0.25) ≈ 0.156 → ease ≈ 1.5625
+    expect(ez).toBeLessThan(lin);
+  });
+
+  it("неизвестный/дефолтный режим эквивалентен linear", () => {
+    const track = [kf(0, 0, 0), kf(10, 100, 100)];
+    expect(interpolate(track, 5)).toEqual(interpolate(track, 5, "linear"));
+  });
+});
