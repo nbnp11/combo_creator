@@ -138,7 +138,7 @@ export default function Toolbar() {
         />
       </ButtonGroup>
 
-      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", height: "100%" }}>
+      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", height: 50 }}>
         <Cta onClick={handleExport} disabled={exportState.busy}>
           {exportState.busy ? `Экспорт… ${Math.round(exportState.progress * 100)}%` : "Экспорт GIF"}
         </Cta>
