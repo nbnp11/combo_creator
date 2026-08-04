@@ -1,5 +1,6 @@
 import { temporal } from "zundo";
 import { create, useStore } from "zustand";
+import { upsertPass } from "../canvas/resolvePosition";
 import type {
   ArrowData,
   BallData,
@@ -25,6 +26,7 @@ const DEFAULT_SETTINGS: ProjectSettings = {
   size: 1080,
   durationSec: 10,
   interpolation: "linear",
+  stepSec: 1,
 };
 
 function uid(prefix: string): string {
@@ -33,6 +35,12 @@ function uid(prefix: string): string {
 
 function withSortedTrack<T extends ObjectData>(obj: T): T {
   return { ...obj, track: [...obj.track].sort((a, b) => a.time - b.time) };
+}
+
+/** Округлить время до границы фрейма (шага таймлайна). */
+function quantizeTime(t: number, step: number): number {
+  if (step <= 0) return t;
+  return Math.round(t / step) * step;
 }
 
 /** Фабрики для новых объектов (используются в тулбаре и дефолтном проекте). */
@@ -61,8 +69,11 @@ export function createBall(x: number, y: number): BallData {
     kind: "ball",
     visible: true,
     zIndex: 2,
-    radius: 10,
-    color: "#ffffff",
+    radius: 9,
+    color: "#f0e7d2",
+    passes: [],
+    offsetX: 16,
+    offsetY: 17,
     track: [{ time: 0, x, y, rotation: 0 }],
   };
 }
@@ -141,6 +152,8 @@ interface ProjectState {
   currentTime: number;
   isPlaying: boolean;
   snapEnabled: boolean;
+  /** Transient: id игрока-приёмника во время драга мяча (подсветка). В историю не попадает. */
+  receiverId: string | null;
   addObject: (obj: ObjectData) => void;
   removeObject: (id: string) => void;
   removeSelected: () => void;
@@ -156,6 +169,13 @@ interface ProjectState {
   setPlaying: (p: boolean) => void;
   updateSettings: (patch: Partial<ProjectSettings>) => void;
   toggleSnap: () => void;
+  /** Назначить владельца мяча в текущем кадре (id игрока) или null (свободен). */
+  setBallCarrier: (carrierId: string | null) => void;
+  /** Сдвинуть событие передачи мяча по времени. */
+  moveBallPass: (oldTime: number, newTime: number) => void;
+  /** Удалить событие передачи мяча. */
+  removeBallPass: (time: number) => void;
+  setReceiver: (id: string | null) => void;
   loadProject: (p: { settings: ProjectSettings; objects: ObjectData[] }) => void;
 }
 
@@ -194,21 +214,46 @@ export const useProjectStore = create<ProjectState>()(
       selectedIds: [],
       currentTime: 0,
       isPlaying: false,
-      snapEnabled: false,
+      snapEnabled: true,
+      receiverId: null,
 
       addObject: (obj) => set((s) => ({ objects: [...s.objects, withSortedTrack(obj)] })),
 
       removeObject: (id) =>
-        set((s) => ({
-          objects: s.objects.filter((o) => o.id !== id),
-          selectedIds: s.selectedIds.filter((x) => x !== id),
-        })),
+        set((s) => {
+          const objects = s.objects.filter((o) => o.id !== id);
+          // если удалили владельца — события передач этого игрока обнуляются (мяч свободен)
+          const patched = objects.map((o) => {
+            if (o.kind !== "ball") return o;
+            const passes = (o.passes ?? []).map((p) =>
+              p.carrierId === id ? { ...p, carrierId: null } : p,
+            );
+            return { ...o, passes, carrierId: o.carrierId === id ? null : o.carrierId };
+          });
+          return {
+            objects: patched,
+            selectedIds: s.selectedIds.filter((x) => x !== id),
+          };
+        }),
 
       removeSelected: () =>
         set((s) => {
           if (s.selectedIds.length === 0) return {};
           const ids = new Set(s.selectedIds);
-          return { objects: s.objects.filter((o) => !ids.has(o.id)), selectedIds: [] };
+          const filtered = s.objects.filter((o) => !ids.has(o.id));
+          // если удалили владельца — события передач этого игрока обнуляются (мяч свободен)
+          const patched = filtered.map((o) => {
+            if (o.kind !== "ball") return o;
+            const passes = (o.passes ?? []).map((p) =>
+              p.carrierId && ids.has(p.carrierId) ? { ...p, carrierId: null } : p,
+            );
+            return {
+              ...o,
+              passes,
+              carrierId: o.carrierId && ids.has(o.carrierId) ? null : o.carrierId,
+            };
+          });
+          return { objects: patched, selectedIds: [] };
         }),
 
       duplicateSelected: () =>
@@ -247,24 +292,35 @@ export const useProjectStore = create<ProjectState>()(
         set((s) => ({ objects: s.objects.map((o) => (o.id === id ? patchObject(o, patch) : o)) })),
 
       setKeyframe: (id, kf) =>
-        set((s) => ({
-          objects: s.objects.map((o) => {
-            if (o.id !== id) return o;
-            const rest = o.track.filter((k) => Math.abs(k.time - kf.time) > 1e-6);
-            return { ...o, track: [...rest, kf].sort((a, b) => a.time - b.time) };
-          }),
-        })),
+        set((s) => {
+          const step = s.settings.stepSec ?? 1;
+          const t = quantizeTime(kf.time, step);
+          return {
+            objects: s.objects.map((o) => {
+              if (o.id !== id) return o;
+              const rest = o.track.filter((k) => Math.abs(k.time - t) > 1e-6);
+              return {
+                ...o,
+                track: [...rest, { ...kf, time: t }].sort((a, b) => a.time - b.time),
+              };
+            }),
+          };
+        }),
 
       moveKeyframe: (id, oldTime, newTime) =>
-        set((s) => ({
-          objects: s.objects.map((o) => {
-            if (o.id !== id) return o;
-            const moved = o.track.map((k) =>
-              Math.abs(k.time - oldTime) <= 1e-6 ? { ...k, time: newTime } : k,
-            );
-            return { ...o, track: moved.sort((a, b) => a.time - b.time) };
-          }),
-        })),
+        set((s) => {
+          const step = s.settings.stepSec ?? 1;
+          const nt = quantizeTime(newTime, step);
+          return {
+            objects: s.objects.map((o) => {
+              if (o.id !== id) return o;
+              const moved = o.track.map((k) =>
+                Math.abs(k.time - oldTime) <= 1e-6 ? { ...k, time: nt } : k,
+              );
+              return { ...o, track: moved.sort((a, b) => a.time - b.time) };
+            }),
+          };
+        }),
 
       removeKeyframe: (id, time) =>
         set((s) => ({
@@ -289,6 +345,39 @@ export const useProjectStore = create<ProjectState>()(
       setPlaying: (p) => set({ isPlaying: p }),
       updateSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
       toggleSnap: () => set((s) => ({ snapEnabled: !s.snapEnabled })),
+      setBallCarrier: (carrierId) =>
+        set((s) => {
+          const step = s.settings.stepSec ?? 1;
+          const t = quantizeTime(s.currentTime, step);
+          return {
+            objects: s.objects.map((o) =>
+              o.kind === "ball" ? { ...o, passes: upsertPass(o.passes, t, carrierId, step) } : o,
+            ),
+          };
+        }),
+      moveBallPass: (oldTime, newTime) =>
+        set((s) => {
+          const step = s.settings.stepSec ?? 1;
+          const nt = quantizeTime(newTime, step);
+          return {
+            objects: s.objects.map((o) => {
+              if (o.kind !== "ball" || !o.passes) return o;
+              const moved = o.passes
+                .map((p) => (Math.abs(p.time - oldTime) <= 1e-6 ? { ...p, time: nt } : p))
+                .sort((a, b) => a.time - b.time);
+              return { ...o, passes: moved };
+            }),
+          };
+        }),
+      removeBallPass: (time) =>
+        set((s) => ({
+          objects: s.objects.map((o) =>
+            o.kind === "ball" && o.passes
+              ? { ...o, passes: o.passes.filter((p) => Math.abs(p.time - time) > 1e-6) }
+              : o,
+          ),
+        })),
+      setReceiver: (id) => set({ receiverId: id }),
       loadProject: (p) =>
         set({
           settings: { interpolation: "linear", ...p.settings },
@@ -296,6 +385,7 @@ export const useProjectStore = create<ProjectState>()(
           selectedIds: [],
           currentTime: 0,
           isPlaying: false,
+          receiverId: null,
         }),
     }),
     {
@@ -319,9 +409,9 @@ export function useHistory() {
 }
 
 export function createDefaultProject(): ObjectData[] {
-  return [
-    createPlayer(10, 120, 200, "blue"),
-    createPlayer(9, 200, 300, "blue"),
-    createBall(100, 100),
-  ];
+  const p1 = createPlayer(10, 120, 200, "blue");
+  const p2 = createPlayer(9, 200, 300, "blue");
+  const ball = createBall(100, 100);
+  ball.passes = [{ time: 0, carrierId: p1.id }]; // мяч сразу у первого игрока
+  return [p1, p2, ball];
 }

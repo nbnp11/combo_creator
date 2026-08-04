@@ -3,9 +3,9 @@ import workerUrl from "gif.js/dist/gif.worker.js?url";
 import Konva from "konva";
 import { drawObjectInto } from "../canvas/drawObject";
 import { getFieldMarks } from "../canvas/fieldMarks";
+import { resolvePosition } from "../canvas/resolvePosition";
 import { FIELD } from "../config/field";
 import type { InterpolationMode } from "../timeline/interpolator";
-import { interpolate } from "../timeline/interpolator";
 import type { ObjectData, ProjectSettings } from "../types";
 
 /** Императивная отрисовка поля регби на Konva-слой (общая для offscreen-экспорта). */
@@ -33,15 +33,18 @@ function addFieldToLayer(layer: Konva.Layer): void {
   }
 }
 
-/** Императивная отрисовка одного объекта в момент t через общий drawObjectInto. */
+/** Императивная отрисовка одного объекта в момент t через общий drawObjectInto.
+ *  Позиция — через resolvePosition (мяч-владелец едет за игроком и в экспорте). */
 function addObjectToLayer(
   layer: Konva.Layer,
+  objects: ObjectData[],
   obj: ObjectData,
   t: number,
   mode: InterpolationMode,
+  step: number,
 ): void {
   if (!obj.visible) return;
-  const p = interpolate(obj.track, t, mode);
+  const p = resolvePosition(objects, obj, t, mode, step);
   const group = new Konva.Group({ x: p.x, y: p.y, rotation: p.rotation, listening: false });
   drawObjectInto(group, obj, false); // selected=false: в экспорте подсветки нет
   layer.add(group);
@@ -75,13 +78,14 @@ export async function exportGif(
 
   const sorted = [...objects].sort((a, b) => a.zIndex - b.zIndex);
   const mode = settings.interpolation ?? "linear";
+  const step = settings.stepSec ?? 1;
 
   try {
     for (let i = 0; i < totalFrames; i++) {
       const t = i / settings.fps;
       layer.destroyChildren();
       addFieldToLayer(layer);
-      for (const obj of sorted) addObjectToLayer(layer, obj, t, mode);
+      for (const obj of sorted) addObjectToLayer(layer, objects, obj, t, mode, step);
       layer.draw();
       const canvas = stage.toCanvas({ pixelRatio: scale });
       gif.addFrame(canvas, { delay, copy: true });
