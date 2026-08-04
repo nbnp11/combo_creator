@@ -163,6 +163,9 @@ input[type="radio"] {
   text-transform: uppercase;
   color: var(--text-faint);
   margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .pb-ctrl {
   width: 100%;

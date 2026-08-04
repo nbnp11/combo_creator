@@ -14,6 +14,12 @@ function readableText(bg: string): string {
   return lum > 150 ? "#1a1a1a" : "#ffffff";
 }
 
+/** Доп. флаги отрисовки игрока: кольцо владельца мяча и/или приёмника при передаче. */
+export interface DrawFlags {
+  carrier?: boolean;
+  receiver?: boolean;
+}
+
 /**
  * Императивная отрисовка фигур одного объекта в Konva.Group.
  * Единый источник рендера: используется и в редакторе (SceneObject), и в offscreen-экспорте GIF.
@@ -21,8 +27,14 @@ function readableText(bg: string): string {
  * Существующие children группы предварительно удаляются.
  *
  * @param selected подсветка выделения (в экспорте всегда false).
+ * @param flags    доп. флаги для игроков (владелец/приёмник); в экспорте не передаются.
  */
-export function drawObjectInto(group: Konva.Group, obj: ObjectData, selected: boolean): void {
+export function drawObjectInto(
+  group: Konva.Group,
+  obj: ObjectData,
+  selected: boolean,
+  flags?: DrawFlags,
+): void {
   group.destroyChildren();
 
   switch (obj.kind) {
@@ -49,15 +61,55 @@ export function drawObjectInto(group: Konva.Group, obj: ObjectData, selected: bo
           listening: false,
         }),
       );
+      // Кольцо владельца мяча (зелёное пунктирное) и приёмника (синее) — индикаторы «липкости».
+      if (flags?.carrier) {
+        group.add(
+          new Konva.Circle({
+            radius: radius + 7,
+            stroke: "#2fd17a",
+            strokeWidth: 2,
+            dash: [5, 4],
+            listening: false,
+          }),
+        );
+      }
+      if (flags?.receiver) {
+        group.add(
+          new Konva.Circle({
+            radius: radius + 7,
+            stroke: "#1e88e5",
+            strokeWidth: 2.5,
+            listening: false,
+          }),
+        );
+      }
       break;
     }
     case "ball": {
+      // Регбийный мяч: овал (rx>ry) с тёмным кантом, бликом и швом-перемычкой.
+      const ry = obj.radius;
+      const rx = obj.radius * 1.6;
       group.add(
-        new Konva.Circle({
-          radius: obj.radius,
+        new Konva.Ellipse({
+          radiusX: rx,
+          radiusY: ry,
           fill: obj.color,
-          stroke: selected ? SEL_STROKE : "#333333",
-          strokeWidth: selected ? 3 : 1,
+          stroke: selected ? SEL_STROKE : "#463f31",
+          strokeWidth: selected ? 3 : 1.5,
+        }),
+        new Konva.Ellipse({
+          x: -rx * 0.22,
+          y: -ry * 0.28,
+          radiusX: rx * 0.45,
+          radiusY: ry * 0.5,
+          fill: "rgba(255,255,255,0.55)",
+          listening: false,
+        }),
+        new Konva.Line({
+          points: [-rx * 0.68, 0, rx * 0.68, 0],
+          stroke: "#5b5446",
+          strokeWidth: 1.3,
+          listening: false,
         }),
       );
       break;
