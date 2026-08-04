@@ -1,6 +1,6 @@
+import { carrierAt, resolvePosition } from "../canvas/resolvePosition";
 import { useProjectStore } from "../store/projectStore";
-import { interpolate } from "../timeline/interpolator";
-import type { PlayerData } from "../types";
+import type { BallData, ObjectData, PlayerData } from "../types";
 import { Field, FieldRow, NumberInput, Palette, Select, SideHead, TextInput } from "../ui";
 
 const TEAM_COLORS: Record<PlayerData["team"], string> = {
@@ -15,6 +15,7 @@ export default function PropertiesPanel() {
   const currentTime = useProjectStore((s) => s.currentTime);
   const updateObject = useProjectStore((s) => s.updateObject);
   const setKeyframe = useProjectStore((s) => s.setKeyframe);
+  const setBallCarrier = useProjectStore((s) => s.setBallCarrier);
   const settings = useProjectStore((s) => s.settings);
   const updateSettings = useProjectStore((s) => s.updateSettings);
 
@@ -58,6 +59,18 @@ export default function PropertiesPanel() {
               }
             />
           </Field>
+          <Field label="Шаг / фрейм (сек)">
+            <NumberInput
+              value={settings.stepSec ?? 1}
+              min={0.1}
+              step={0.5}
+              onChange={(e) =>
+                updateSettings({
+                  stepSec: Math.max(0.1, Number(e.target.value) || 1),
+                })
+              }
+            />
+          </Field>
           <Field label="Интерполяция">
             <Select
               value={settings.interpolation ?? "linear"}
@@ -88,7 +101,10 @@ export default function PropertiesPanel() {
 
   const up = (patch: Parameters<typeof updateObject>[1]) => updateObject(obj.id, patch);
   const interpolation = settings.interpolation ?? "linear";
-  const pos = interpolate(obj.track, currentTime, interpolation);
+  const step = settings.stepSec ?? 1;
+  const pos = resolvePosition(objects, obj, currentTime, interpolation, step);
+  const ball = objects.find((o): o is BallData => o.kind === "ball");
+  const ballCarrierNow = ball ? carrierAt(ball, currentTime) : null;
 
   // rotation правит rotation ключа в текущий момент времени (модель та же, что у drag→key).
   const setRotation = (deg: number) =>
@@ -113,7 +129,7 @@ export default function PropertiesPanel() {
               onChange={(e) => up({ zIndex: Number(e.target.value) || 0 })}
             />
           </Field>
-          <Field label="Поворот ° (в кадре)">
+          <Field label="Поворот °">
             <NumberInput
               value={Math.round(pos.rotation)}
               onChange={(e) => setRotation(Number(e.target.value) || 0)}
@@ -156,6 +172,9 @@ export default function PropertiesPanel() {
                 onChange={(e) => up({ radius: Number(e.target.value) || 0 })}
               />
             </Field>
+            {ball && (
+              <CarrierField value={ballCarrierNow} objects={objects} onChange={setBallCarrier} />
+            )}
           </>
         )}
 
@@ -171,6 +190,9 @@ export default function PropertiesPanel() {
                 onChange={(e) => up({ radius: Number(e.target.value) || 0 })}
               />
             </Field>
+            {ball && (
+              <CarrierField value={ballCarrierNow} objects={objects} onChange={setBallCarrier} />
+            )}
           </>
         )}
 
@@ -301,5 +323,34 @@ export default function PropertiesPanel() {
         )}
       </div>
     </>
+  );
+}
+
+/** Селектор владельца мяча в текущем кадре: игрок из списка либо «свободен».
+ *  Смена значения создаёт событие передачи на таймлайне в текущем кадре. */
+function CarrierField({
+  value,
+  objects,
+  onChange,
+}: {
+  value: string | null | undefined;
+  objects: ObjectData[];
+  onChange: (id: string | null) => void;
+}) {
+  const players = objects.filter((o): o is PlayerData => o.kind === "player");
+  return (
+    <Field label="Владелец (в кадре)">
+      <Select
+        value={value ?? "free"}
+        onChange={(e) => onChange(e.target.value === "free" ? null : e.target.value)}
+      >
+        {players.map((p) => (
+          <option key={p.id} value={p.id}>
+            #{p.number} · {p.team === "blue" ? "синий" : "красный"}
+          </option>
+        ))}
+        <option value="free">свободен</option>
+      </Select>
+    </Field>
   );
 }

@@ -32,10 +32,28 @@ export interface PlayerData extends BaseObjectData {
   radius: number;
 }
 
+export interface PassEvent {
+  /** Момент времени (сек) прилёта мяча к новому владельцу (завершение передачи). */
+  time: number;
+  /** Новый владелец (id игрока) или null — мяч свободен с этого момента. */
+  carrierId: string | null;
+  /** Длительность полёта мяча при передаче (сек). По умолчанию DEFAULT_PASS_DURATION. */
+  duration?: number;
+}
+
 export interface BallData extends BaseObjectData {
   kind: "ball";
   radius: number;
   color: string;
+  /** События владения на таймлайне (отсортированы по time): кто владеет мячом начиная с time.
+   *  Владелец в момент t = последний event с time<=t (или null до первого/при отсутствии).
+   *  Старые файлы без passes, но с carrierId — трактуется как владение на всё время. */
+  passes?: PassEvent[];
+  /** Back-compat: одиночный владелец на всё время (старые файлы). */
+  carrierId?: string | null;
+  /** Смещение мяча относительно центра владельца (field units). */
+  offsetX?: number;
+  offsetY?: number;
 }
 
 export interface ArrowData extends BaseObjectData {
@@ -88,8 +106,10 @@ export type ProjectSettings = {
   fps: 15 | 24 | 30;
   size: 720 | 1080 | 1440;
   durationSec: number;
-  /** Режим интерполяции треков (глобально). Отсутствует в старых файлах — трактуется как linear. */
+  /** Режим интерполяции внутри фрейма (linear/ease). catmullrom трактуется как linear. */
   interpolation?: InterpolationMode;
+  /** Шаг таймлайна («фрейм»), сек. Ключи и передачи только на границах шага. По умолчанию 1. */
+  stepSec?: number;
 };
 
 export type ProjectSchema = {
