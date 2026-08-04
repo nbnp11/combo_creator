@@ -159,7 +159,7 @@ describe("YAML serialization round-trip", () => {
   it("loadProjectYamlFile читает файл (имитация File)", async () => {
     const settings = { fps: 24 as const, size: 1080 as const, durationSec: 10 };
     const yamlText = projectToYaml(settings, sampleObjects());
-    const file = new File([yamlText], "combo.yaml", { type: "text/yaml" });
+    const file = new File([yamlText], "playbook.yaml", { type: "text/yaml" });
     const restored = await loadProjectYamlFile(file);
     expect(restored.objects).toHaveLength(7);
   });

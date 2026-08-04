@@ -12,7 +12,7 @@ export function downloadProjectYaml(settings: ProjectSettings, objects: ObjectDa
   const blob = new Blob([text], { type: "text/yaml" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "combo.yaml";
+  a.download = "playbook.yaml";
   a.click();
   URL.revokeObjectURL(a.href);
 }

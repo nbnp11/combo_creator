@@ -64,7 +64,7 @@ export default function Toolbar() {
       const blob = await exportGif(objects, settings, (p) =>
         setExportState({ busy: true, progress: p }),
       );
-      downloadBlob(blob, "combo.gif");
+      downloadBlob(blob, "playbook.gif");
     } catch (err) {
       console.error("GIF export failed", err);
     } finally {
